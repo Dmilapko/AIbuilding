@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIbuilding", "AIbuilding.csproj", "{D2B91DA8-8B8D-4213-A6D9-7CEF029898D0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AIbuilding", "AIbuilding.csproj", "{D2B91DA8-8B8D-4213-A6D9-7CEF029898D0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonoHelper", "..\MonoHelper\MonoHelper.csproj", "{1FD75478-E30D-4023-B58E-78F6FE4DEB1B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonogameLabel", "..\MonogameLabel\MonogameLabel\MonogameLabel.csproj", "{030551C7-AE58-49A5-AF17-0E80B56984D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{D2B91DA8-8B8D-4213-A6D9-7CEF029898D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D2B91DA8-8B8D-4213-A6D9-7CEF029898D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D2B91DA8-8B8D-4213-A6D9-7CEF029898D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FD75478-E30D-4023-B58E-78F6FE4DEB1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FD75478-E30D-4023-B58E-78F6FE4DEB1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FD75478-E30D-4023-B58E-78F6FE4DEB1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FD75478-E30D-4023-B58E-78F6FE4DEB1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

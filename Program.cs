@@ -1,5 +1,7 @@
-﻿using Microsoft.Xna.Framework.Graphics;
+﻿using AIbuilding;
+using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Threading;
 
 namespace AIlanding
 {
@@ -8,6 +10,10 @@ namespace AIlanding
         public static SpriteFont font20;
         public static SpriteFont font10;
         public static SpriteFont font15;
+        public static GraphicsDevice my_device;
+        public static SpriteBatch spriteBatch;
+        public static int overpasscnt = 0;
+
 
         [STAThread]
         static void Main()
