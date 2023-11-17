@@ -33,8 +33,8 @@ namespace AIbuilding
         public override string TileURL()
         {
             //     "https://overpass-api.de/api/interpreter?data=way[%22building%22](if:%20number(t[%22building:levels%22])%3E=7)(55.59105440134483,37.451963424682624,55.63371345098194,37.5425148010254);%20out%20geom;";
-            var leftv = MapMath.PointToLatLong(pos, level);
-            var rightv = MapMath.PointToLatLong(pos + new Point(1, 1), level);
+            var leftv = MapMath.PointToLongLat(pos, level);
+            var rightv = MapMath.PointToLongLat(pos + new Point(1, 1), level);
             return "https://overpass-api.de/api/interpreter?data=[out:csv(::lat,::lon;false;\";\")];way[\"building\"](if:number(t[\"building:levels\"])%3E=7)(" + (rightv.Y).ToString(CultureInfo.InvariantCulture) + "," + leftv.X.ToString(CultureInfo.InvariantCulture) + "," + (leftv.Y).ToString(CultureInfo.InvariantCulture) + "," + rightv.X.ToString(CultureInfo.InvariantCulture) + ");%20out%20center;";
         }
 
@@ -138,7 +138,7 @@ namespace AIbuilding
                     for (int i = 0; i < 256 * 256; i++) cd[i] = Color.Transparent; 
                     for (int i = 0; i < contents.Length; i+=22)
                     {
-                        PointD vp = MapMath.LatLongToPoint(new PointD(Convert.ToDouble(contents.Substring(i, 10), CultureInfo.InvariantCulture), Convert.ToDouble(contents.Substring(i + 11, 10), CultureInfo.InvariantCulture)), level) - new PointD(pos.X, pos.Y);
+                        PointD vp = MapMath.LongLatToPoint(new PointD(Convert.ToDouble(contents.Substring(i, 10), CultureInfo.InvariantCulture), Convert.ToDouble(contents.Substring(i + 11, 10), CultureInfo.InvariantCulture)), level) - new PointD(pos.X, pos.Y);
                         if ((vp.X > 0 && vp.Y > 0 && vp.X < 1 && vp.Y < 1) && ((int)(vp.X * 256) + (int)(vp.Y * 256) * 256) < 256*256) 
                             cd[(int)(vp.X * 256) + (int)(vp.Y * 256) * 256] = new Color(0, 0, 255, 128);
                     }

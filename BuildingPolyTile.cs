@@ -31,8 +31,8 @@ namespace AIbuilding
 
         public override string TileURL()
         {
-            var leftv = MapMath.PointToLatLong(pos, level);
-            var rightv = MapMath.PointToLatLong(pos + new Point(1, 1), level);
+            var leftv = MapMath.PointToLongLat(pos, level);
+            var rightv = MapMath.PointToLongLat(pos + new Point(1, 1), level);
             return "https://overpass-api.de/api/interpreter?data=way[\"building\"](if:number(t[\"building:levels\"])%3E=7)(" + (rightv.Y).ToString(CultureInfo.InvariantCulture) + "," + leftv.X.ToString(CultureInfo.InvariantCulture) + "," + (leftv.Y).ToString(CultureInfo.InvariantCulture) + "," + rightv.X.ToString(CultureInfo.InvariantCulture) + ");%20out%20geom;";
         }
 
@@ -94,7 +94,7 @@ namespace AIbuilding
                             if (stringnow != stringprev + 1) tilebuildings.Add(new List<Vector2>());
                             stringprev = stringnow;
                             tilebuildings.Last().Add(256 * 
-                                (MapMath.LatLongToPoint(new PointD(Convert.ToDouble(contents.Substring(i, 10), CultureInfo.InvariantCulture), 
+                                (MapMath.LongLatToPoint(new PointD(Convert.ToDouble(contents.Substring(i, 10), CultureInfo.InvariantCulture), 
                                 Convert.ToDouble(contents.Substring(i + 17, 10), CultureInfo.InvariantCulture)), level).ToVector2() - pos.ToVector2()));
                         }
                     }
@@ -127,6 +127,7 @@ namespace AIbuilding
 
         public override void DrawTile(int cur_level, SpriteBatch spriteBatch, Vector2 center)
         {
+            if (Program.save_graphics) return;
             var scr_pos = ScreenPosition(cur_level, center);
             foreach (List<Vector2> building in tilebuildings)
             {

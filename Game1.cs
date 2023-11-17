@@ -18,7 +18,9 @@ namespace AIbuilding
         Session session;
         int fpscnt = 0;
         List<FormElement> elements = new List<FormElement>();
-        public Label fpslabel;
+        public Label fpslabel, pauselabel;
+
+        bool paused = false, press_p = false;
 
         public Game1()
         {
@@ -54,6 +56,9 @@ namespace AIbuilding
             fpslabel = new Label(1820, 20, -1, -1, "FPS", Program.font20, 20, 20);
             fpslabel.textcolor = Color.Red;
             elements.Add(fpslabel);
+            pauselabel = new Label(20, 20, -1, -1, "PAUSE", Program.font20, 20, 20);
+            pauselabel.textcolor = Color.Red;
+            elements.Add(pauselabel);
             session = new Session();
             Timer fpstimer = new Timer();
             fpstimer.Elapsed += Fpstimer_Elapsed;
@@ -66,7 +71,13 @@ namespace AIbuilding
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-            if (MHeleper.ApplicationIsActivated()) session.Run(Mouse.GetState(), Keyboard.GetState());
+            if (Keyboard.GetState().IsKeyDown(Keys.P))
+            {
+                if (!press_p) paused = !paused;
+                press_p = true;
+            }
+            else press_p = false;
+            if (!paused) session.Run(Mouse.GetState(), Keyboard.GetState());
             // TODO: Add your update logic here
 
             base.Update(gameTime);
@@ -76,6 +87,8 @@ namespace AIbuilding
 
         protected override void Draw(GameTime gameTime)
         {
+            if (paused) pauselabel.text = "PAUSE";
+            else pauselabel.text = "RUNNING";
             GraphicsDevice.Clear(Color.CornflowerBlue);
             spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied);
             session.Draw();

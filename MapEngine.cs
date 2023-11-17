@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Framework.Utilities.Deflate;
 using MonoHelper;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,40 +57,122 @@ namespace AIbuilding
             return new PointD((scr_pos.X - 1380) * 360 / 1024 / Math.Pow(2, cur_level) + center.X, (scr_pos.Y - 540) * 360 / 1024 / Math.Pow(2, cur_level) + center.Y);
         }
 
-        public static PointD PointToLatLong(Point point, int level)
+        public static PointD PointToLongLat(Point point, int level)
         {
             double n = Math.PI - 2.0 * Math.PI * point.Y / (double)(1 << level);
             return new PointD(point.X / (double)(1 << level) * 360.0 - 180, 180.0 / Math.PI * Math.Atan(0.5 * (Math.Exp(n) - Math.Exp(-n))));
         }
 
-        public static PointD PointToLatLong(PointD point, int level)
+        public static PointD PointToLongLat(PointD point, int level)
         {
             double n = Math.PI - 2.0 * Math.PI * point.Y / (double)(1 << level);
             return new PointD(point.X / (double)(1 << level) * 360.0 - 180, 180.0 / Math.PI * Math.Atan(0.5 * (Math.Exp(n) - Math.Exp(-n))));
         }
 
-        public static PointD LatLongToPoint(PointD latlong, int level)
+        public static PointD LongLatToPoint(PointD latlong, int level)
         {
             var latRad = latlong.X / 180 * Math.PI;
             return new PointD((latlong.Y + 180.0) / 360.0 * (1 << level), (1 - Math.Log(Math.Tan(latRad) + 1 / Math.Cos(latRad)) / Math.PI) / 2 * (1 << level));
         }
 
-        public static PointD ScreenToLatLong(Vector2 scr_pos, Vector2 center, int level)
+        public static PointD ScreenToLongLat(Vector2 scr_pos, Vector2 center, int level)
         {
-            PointD point = (scr_pos - MapMath.start_screen).ToPointD() / 256 - new PointD(2, 2) + new PointD((center.X + 180) * (1 << (level+2)) / 360, (center.Y + 180) * (1 << (level+2)) / 360);
-            return PointToLatLong(point, level + 2);
+            PointD point = (scr_pos - MapMath.start_screen).ToPointD() / 256 - new PointD(2, 2) + new PointD((center.X + 180) * (1 << (level + 2)) / 360, (center.Y + 180) * (1 << (level + 2)) / 360);
+            return PointToLongLat(point, level + 2);
         }
 
-        public static Vector2 LatLongToScreen(PointD latlong, Vector2 center, int level)
+        public static Vector2 LongLatToScreen(PointD longlat, Vector2 center, int level)
         {
-            double latRad = latlong.Y / 180 * Math.PI;
-            PointD point_dif = new PointD((latlong.X - center.X) / 360 * (1 << (level + 2)), ((1 - Math.Log(Math.Tan(latRad) + 1 / Math.Cos(latRad)) / Math.PI) / 2 - (center.Y + 180) / 360) * (1 << (level + 2))) + new PointD(2,2);
+            double latRad = longlat.Y / 180 * Math.PI;
+            PointD point_dif = new PointD((longlat.X - center.X) / 360 * (1 << (level + 2)), ((1 - Math.Log(Math.Tan(latRad) + 1 / Math.Cos(latRad)) / Math.PI) / 2 - (center.Y + 180) / 360) * (1 << (level + 2))) + new PointD(2, 2);
             return (point_dif * 256).ToVector2() + start_screen;
         }
+
+        public static PointD LongLatDif(PointD point, PointD startpoint)
+        {
+            double dy = MapMath.DistanceLongLat(point, new PointD(point.X, startpoint.Y));
+            double a = MapMath.DistanceLongLat(point, startpoint);
+            double dx = Math.Sqrt(a * a - dy * dy);
+            return new PointD(MHeleper.GetSign(point.X - startpoint.X) * dx, MHeleper.GetSign(point.Y - startpoint.Y) * dy);
+        }
+
+        public static double AngleLongLat(PointD p1, PointD p2)
+        {
+            return angleFromCoordinate(p1.Y.ToRadians(), p1.X.ToRadians(), p2.Y.ToRadians(), p2.X.ToRadians());
+        }
+
+        private static double angleFromCoordinate(double lat1, double long1, double lat2, double long2)
+        {
+
+            double dLon = (long2 - long1);
+
+            double y = Math.Sin(dLon) * Math.Cos(lat2);
+            double x = Math.Cos(lat1) * Math.Sin(lat2) - Math.Sin(lat1)
+                    * Math.Cos(lat2) * Math.Cos(dLon);
+
+            double brng = Math.Atan2(y, x);
+            return brng;
+        }
+
+     /*   public static PointD TurnLongLat(PointD coord, PointD midpoint, double angle)
+        {
+            // Create local variables using appropriate nomenclature
+            double x = coord.X;
+            double y = coord.Y;
+            double mx = midpoint.X;
+            double my = midpoint.Y;
+
+            // Offset input point by the midpoint so the midpoint becomes the origin
+            double ox = x - mx;
+            double oy = y - my;
+
+            // Cache trig results because trig is expensive
+            double cosr = Math.Cos(angle);
+            double sinr = Math.Sin(angle);
+
+            // Perform rotation
+            double dx = ox * cosr - oy * sinr;
+            double dy = ox * sinr + oy * cosr;
+
+            // Undo the offset
+            return new PointD(dx + mx, dy + my);
+        }*/
 
         public static bool LineInScreen(Vector2 p0, Vector2 p1)
         {
             return SegmentIntersectRectangle(start_screen.X, start_screen.Y, end_screen.X, end_screen.Y, p0.X, p0.Y, p1.X, p1.Y);
+        }
+
+        public static double DistanceLongLat(PointD longlat0, PointD longlat1)
+        {
+            return DistanceTo(longlat0.Y, longlat0.X, longlat1.Y, longlat1.X);
+        }
+
+        //https://stackoverflow.com/a/24712129
+        private static double DistanceTo(double lat1, double lon1, double lat2, double lon2)
+        {
+            double rlat1 = Math.PI * lat1 / 180;
+            double rlat2 = Math.PI * lat2 / 180;
+            double theta = lon1 - lon2;
+            double rtheta = Math.PI * theta / 180;
+            double dist =
+                Math.Sin(rlat1) * Math.Sin(rlat2) + Math.Cos(rlat1) *
+                Math.Cos(rlat2) * Math.Cos(rtheta);
+            dist = Math.Acos(dist);
+            dist = dist * 180 / Math.PI;
+            dist = dist * 60 * 1.1515;
+
+            return dist * 1609.344;
+        }
+
+        public static PointD RotateLongtLat(PointD center, double radiusm, double theta)
+        {
+            // Convert input miles to degrees latitude and longitude.
+            var radiusLon = radiusm / (111319 * Math.Cos(center.Y * (Math.PI / 180)));
+            var radiusLat = radiusm / 110574;
+
+
+            return new PointD(center.X + radiusLon * Math.Sin(theta), center.Y + radiusLat * Math.Cos(theta)); 
         }
 
         public static bool SegmentIntersectRectangle(
@@ -201,17 +285,15 @@ namespace AIbuilding
         public Vector2 center = new Vector2(0, 0);
         public int level = 1;
         List<HashSet<TileDesc>> tiles_set = new List<HashSet<TileDesc>> { new HashSet<TileDesc>(), new HashSet<TileDesc>(), new HashSet<TileDesc>() };
-        string name = "";
         string datafile;
         long byte_limit;
         Point prev_mouse_pos = new Point(0, 0);
         Texture2D map_mask;
         bool lastmove = true;
 
-        public MapEngine(long byte_limit, string name)
+        public MapEngine(long byte_limit)
         {
             this.byte_limit = byte_limit;
-            this.name = name;
             datafile = Directory.GetCurrentDirectory()+"\\data";
             map_mask = new Texture2D(Program.my_device, 1920, 1080);
             Color[] cd = new Color[1920 * 1080];
@@ -273,7 +355,7 @@ namespace AIbuilding
 
         void CleanOld()
         {
-            var files = Directory.GetFiles(name);
+            var files = Directory.GetFiles(Program.setupProp["session_name"]);
             List<TupleLSL> file_dates = new List<TupleLSL>();
             long total_bytes = 0;
             foreach (string filename in files)
@@ -299,40 +381,43 @@ namespace AIbuilding
 
         public void Run(MouseState mouse, KeyboardState keyboard)
         {
-            if (mouse.LeftButton == ButtonState.Pressed && mouse.Position.ToVector2().InRect(MapMath.start_screen, MapMath.end_screen))
+            if (MHeleper.ApplicationIsActivated())
             {
-                if (!press_ml)
+                if (mouse.LeftButton == ButtonState.Pressed && mouse.Position.ToVector2().InRect(MapMath.start_screen, MapMath.end_screen))
                 {
-                    prev_mouse_pos = mouse.Position;
-                    prev_center = center;
+                    if (!press_ml)
+                    {
+                        prev_mouse_pos = mouse.Position;
+                        prev_center = center;
+                    }
+                    var p = prev_mouse_pos - mouse.Position;
+                    center = prev_center + new Vector2(MapMath.PixelsToDistance(p.X, level), MapMath.PixelsToDistance(p.Y, level));
+                    press_ml = true;
                 }
-                var p = prev_mouse_pos - mouse.Position;
-                center = prev_center + new Vector2(MapMath.PixelsToDistance(p.X, level), MapMath.PixelsToDistance(p.Y, level));
-                press_ml = true;
-            }
-            else press_ml = false;
-            if (keyboard.IsKeyDown(Keys.Q))
-            {
-                if (!press_q)
+                else press_ml = false;
+                if (keyboard.IsKeyDown(Keys.Q))
                 {
-                    level++;
-                    lastmove = true;
-                    center = MapMath.ScreenToCoordinates(new Vector2(mouse.Position.X, mouse.Position.Y), center, level).ToVector2();
+                    if (!press_q)
+                    {
+                        level++;
+                        lastmove = true;
+                        center = MapMath.ScreenToCoordinates(new Vector2(mouse.Position.X, mouse.Position.Y), center, level).ToVector2();
+                    }
+                    press_q = true;
                 }
-                press_q = true;
-            }
-            else press_q = false;
-            if (keyboard.IsKeyDown(Keys.W))
-            {
-                if (!press_w)
+                else press_q = false;
+                if (keyboard.IsKeyDown(Keys.W))
                 {
-//                    center = MapMath.ScreenToCoordinates(new Vector2(mouse.Position.X, mouse.Position.Y), center, level);
-                    level--;
-                    lastmove = false;
+                    if (!press_w)
+                    {
+                        //                    center = MapMath.ScreenToCoordinates(new Vector2(mouse.Position.X, mouse.Position.Y), center, level);
+                        level--;
+                        lastmove = false;
+                    }
+                    press_w = true;
                 }
-                press_w = true;
+                else press_w = false;
             }
-            else press_w = false;
             for (int t = 0; t < 3; t++)
             {
                 foreach (Point pos in GetVisibleTiles(t))
@@ -340,9 +425,9 @@ namespace AIbuilding
                     if (!tiles_set[t].Contains(new TileDesc(tile_level(t), pos)))
                     {
                         tiles_set[t].Add(new TileDesc(tile_level(t), pos));
-                        if (t == 0) tiles[t].Add(new MapTile(tile_level(t), pos, name));
-                        else if (t == 1) tiles[t].Add(new BuildingMaskTile(pos, name));
-                        else if (t == 2) tiles[t].Add(new BuildingPolyTile(pos, name));
+                        if (t == 0) tiles[t].Add(new MapTile(tile_level(t), pos, Program.setupProp["session_name"]));
+                        else if (t == 1) tiles[t].Add(new BuildingMaskTile(pos, Program.setupProp["session_name"]));
+                        else if (t == 2) tiles[t].Add(new BuildingPolyTile(pos, Program.setupProp["session_name"]));
                     }
                 }
             }
