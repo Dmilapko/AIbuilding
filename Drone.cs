@@ -10,6 +10,9 @@ using System.Dynamic;
 using System.Xml.Linq;
 using System.Drawing;
 using System.Text.Json.Serialization;
+using System.Runtime.CompilerServices;
+using Microsoft.Xna.Framework.Input;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AIbuilding
 {
@@ -36,7 +39,7 @@ namespace AIbuilding
         public double BinarySearch(double position, double precision)
         {
             double left = 0, right = 1, res = -1;
-            int depth = (int)Math.Ceiling(Math.Log2(length / precision));
+            int depth = (int)Math.Ceiling(Math.Log2(length / precision)) + 5;
             for (int i = 0; i < depth; i++)
             {
                 res = (left + right) / 2;
@@ -59,46 +62,71 @@ namespace AIbuilding
 
     public class BuildingBound
     {
-        PointD leftp, rightp;
-        double lsub;
+        public PointD leftp, rightp;
+        public double lsub;
         
-        public BuildingBound(PointD leftp, PointD rightp, PointD centroid)
+        public BuildingBound(PointD leftp, PointD rightp, PointD real_leftp, PointD real_rightp,  PointD centroid)
         {
-            this.leftp = leftp;
-            this.rightp = rightp;
+            this.leftp = real_leftp;
+            this.rightp = real_rightp;
             double y = (leftp.Y + rightp.Y) / 2;
-            lsub = MapMath.DistanceLongLat(new PointD(leftp.X, y), new PointD(rightp.X, y));
+            lsub = MapMath.DistanceLongLat(new PointD(leftp.X, y), new PointD(centroid.X, y));
         }
     }
 
 
     public class BuildingRepresentation
     {
-        private List<BuildingBound> bounds_list = new List<BuildingBound>(180);
+        public List<BuildingBound> bounds_list = new List<BuildingBound>(360);
         public PointD centroid;
         public List<PointD> points;
 
         public BuildingRepresentation(List<PointD> points)
         {
             centroid = MapMath.GetCentroid(points);
+            double max_dist = 0;
             List<Pair<double, double>> points_dl =  new List<Pair<double, double>>();
             foreach (var tp in points)
             {
-                points_dl.Add(new Pair<double, double>(MapMath.DistanceLongLat(centroid, tp), MapMath.AngleLongLat(centroid, tp)));
+                double dist = MapMath.DistanceLongLat(centroid, tp);
+                points_dl.Add(new Pair<double, double>(dist, MapMath.AngleLongLat(centroid, tp)));
+                max_dist = Math.Max(dist, max_dist);
             }
-            double step = 1.ToRadians();
-            for (int i = 0; i < 180; i++)
+            PointD measurepoint = MapMath.RotateLongtLat(centroid, max_dist + 200, Math.PI);
+            for (int i = 0; i < 360; i++)
             {
                 PointD mostleft = new PointD(+1000, 0), mostright = new PointD(-1000, 0); 
                 int ind_ml = 0, ind_mr = 0;
+                double angle_left = 100, angle_right = -100;
                 for (int j = 0; j < points.Count; j++)
                 { 
-                    PointD turn_tp = MapMath.RotateLongtLat(centroid, points_dl[j].First , points_dl[j].Second + i.ToRadians());
-                    if (turn_tp.X < mostleft.X) { mostleft = turn_tp; ind_ml = j; }
-                    if (turn_tp.X > mostright.X) { mostright = turn_tp; ind_mr = j; }
+                    PointD turn_tp = MapMath.RotateLongtLat(centroid, points_dl[j].First , points_dl[j].Second - i.ToRadians());
+                    double tp_a = MapMath.AngleLongLat(measurepoint, turn_tp) + Math.PI;
+                    if (tp_a < angle_left)
+                    {
+                        angle_left = tp_a; ind_ml = j;
+                    }
+                    if (tp_a > angle_right)
+                    {
+                        angle_right = tp_a; ind_mr = j;
+                    }
+                    if (turn_tp.X < mostleft.X) { mostleft = turn_tp;  }
+                    if (turn_tp.X > mostright.X) { mostright = turn_tp; }
                 }
-                bounds_list.Add(new BuildingBound(mostleft, mostright, centroid));
+                bounds_list.Add(new BuildingBound(mostleft, mostright, points[ind_ml], points[ind_mr], centroid));
             }
+            this.points = points;
+        }
+
+        public BuildingBound GetBound(double a)
+        {
+            return bounds_list[((int)Math.Round(a / Math.PI * 180) % 360 + 360) % 360];
+        }
+
+        public double GetWidth(double a)
+        {
+            double real_a = ((a / Math.PI * 180) % 360 + 360) % 360;
+            return Math.Max(bounds_list[(int)Math.Floor(real_a)].lsub, bounds_list[(int)Math.Ceiling(real_a) % 360].lsub);
         }
     }
 
@@ -106,6 +134,7 @@ namespace AIbuilding
     {
         public List<BeizerSegment> segments = new List<BeizerSegment>();
         public double length = 0;
+        public List<double> lengthsum_list = new List<double>();
 
         public BeizerCurve(List<PointD> trackpoints)
         {
@@ -113,6 +142,7 @@ namespace AIbuilding
             if (trackpoints.Count < 3) return;
             for (int i = 0; i <= trackpoints.Count - 3; i += 1)
             {
+                lengthsum_list.Add(length);
                 PointD p0 = (trackpoints[i] + trackpoints[i + 1]) / 2;
                 if (i == 0) p0 = trackpoints[0];
                 PointD p1 = trackpoints[i + 1];
@@ -124,7 +154,7 @@ namespace AIbuilding
         }
     }
 
-    internal class Drone
+    internal static class Drone
     {
         public static List<PointD> GetTrack(BeizerCurve curve, PointD biggerthan, PointD smallerthan)
         {
@@ -152,6 +182,7 @@ namespace AIbuilding
             return res;
         }
 
+
         public static List<BuildingRepresentation> GetBuildingRepresentations(List<List<PointD>> buildings)
         {
             List<BuildingRepresentation> res = new List<BuildingRepresentation>();
@@ -165,12 +196,20 @@ namespace AIbuilding
         /// <summary>
         /// Returns points on curve with certain diapason (in meters)
         /// </summary>
-        public static List<PointD> GetTrack(BeizerCurve curve, double diap, double startpos = 0)
+        public static List<PointD> GetTrack(BeizerCurve curve, double diap, int point_count, double startpos = 0)
         {
             List<PointD> res = new List<PointD>();
-            double cur_dist = 0;
+            double cur_diap = diap;
             int now_track = 0;
-            double cur_diap = startpos;
+            int l = 0, r = curve.lengthsum_list.Count - 1;
+            while (l < r)
+            {
+                now_track = (l + r + 1) / 2;
+                if (curve.lengthsum_list[now_track] > startpos) r = now_track - 1;
+                else l = now_track;
+            }
+            now_track = l;
+            double cur_dist = startpos - curve.lengthsum_list[now_track];
             while (true)
             {
                 while (curve.segments[now_track].length - cur_dist < cur_diap) 
@@ -184,8 +223,9 @@ namespace AIbuilding
                         return res;
                     }
                 }
-                res.Add(curve.segments[now_track].GetPoint(curve.segments[now_track].BinarySearch(cur_dist, diap/256)));
-                cur_dist += diap;
+                res.Add(curve.segments[now_track].GetPoint(curve.segments[now_track].BinarySearch(cur_dist, cur_diap)));
+                if (res.Count == point_count) return res;
+                cur_dist += cur_diap;
                 cur_diap = diap;
             }
         }
@@ -202,13 +242,26 @@ namespace AIbuilding
             }
         }
 
+        public static double minimum_distance(PointD v, PointD w, PointD p)
+        {
+            // Return minimum distance between line segment vw and point p
+            double l2 = Math.Pow((v - w).Length(), 2);  // i.e. |w-v|^2 -  avoid a sqrt
+            if (l2 == 0.0) return MapMath.DistanceLongLat(p, w);   // v == w case
+                                                    // Consider the line extending the segment, parameterized as v + t (w - v).
+                                                    // We find projection of point p onto the line. 
+                                                    // It falls where t = [(p-v) . (w-v)] / |w-v|^2
+                                                    // We clamp t from [0,1] to handle points outside the segment vw.
+            double t = Math.Max(0, Math.Min(1, PointD.DotOperator(p - v, w - v) / l2));
+            PointD projection = v + t * (w - v);  // Projection falls on the segment
+            return MapMath.DistanceLongLat(p, projection);
+        }
 
         /// <summary>
         /// very inefficient function, so must be used as one-time calculation
         /// </summary>
         public static List<List<int>> MakeBuilidng(BeizerCurve curve, double diap, double maxdist, List<List<PointD>> buildings)
         {
-            var points_on_track = GetTrack(curve, diap);
+            var points_on_track = GetTrack(curve, diap, -1);
             List<List<int>> res = new List<List<int>>(points_on_track.Count);
             List<Pair<int, int>> act_buildings = new List<Pair<int, int>>(buildings.Count);
             for (int i = 0; i < buildings.Count; i++) act_buildings.Add(new Pair<int, int>(0, i));
@@ -248,7 +301,57 @@ namespace AIbuilding
                 act_buildings = next_act_buildings;
                 now++;
             }
-            return res;
+            List<List<int>> sorted_res = new List<List<int>>(points_on_track.Count);
+            for (int i = 0; i < res.Count; i++)
+            { 
+                List<Pair<double, int>> length_ind = new List<Pair<double, int>>();
+                foreach (int building_ind in res[i])
+                {
+                    double mindist = double.MaxValue;
+                    for (int c = 0; c < buildings[building_ind].Count; c++)
+                    {
+                        mindist = Math.Min(mindist, minimum_distance(buildings[building_ind][c], buildings[building_ind][(c+1)% buildings[building_ind].Count], points_on_track[i]));
+                    }
+                    length_ind.Add(new Pair<double, int>(mindist, building_ind));
+                }
+                length_ind.Sort((x, y) => x.First.CompareTo(y.First));
+                sorted_res.Add(new List<int>());
+                for (int c = 0; c < length_ind.Count; c++)
+                {
+                    sorted_res[i].Add(length_ind[c].Second);
+                }
+            }
+            return sorted_res;
         }
+
+        public static PointD FindLineIntersection(PointD ray_start, PointD ray_dp, PointD segment_st, PointD segment_fn)
+        {
+            double denom = ((ray_dp.X - ray_start.X) * (segment_fn.Y - segment_st.Y)) - ((ray_dp.Y - ray_start.Y) * (segment_fn.X - segment_st.X));
+
+            //  AB & CD are parallel 
+            if (denom == 0)
+                return PointD.Empty;
+
+            double numer = ((ray_start.Y - segment_st.Y) * (segment_fn.X - segment_st.X)) - ((ray_start.X - segment_st.X) * (segment_fn.Y - segment_st.Y));
+
+            double r = numer / denom;
+
+            double numer2 = ((ray_start.Y - segment_st.Y) * (ray_dp.X - ray_start.X)) - ((ray_start.X - segment_st.X) * (ray_dp.Y - ray_start.Y));
+
+            double s = numer2 / denom;
+
+           
+
+            // Find intersection point
+            PointD result = new PointD();
+            result.X = ray_start.X + (r * (ray_dp.X - ray_start.X));
+            result.Y = ray_start.Y + (r * (ray_dp.Y - ray_start.Y));
+            if (result.X < Math.Min(segment_st.X, segment_fn.X) || result.X > Math.Max(segment_st.X, segment_fn.X)) return PointD.Empty;
+            if (result.Y < Math.Min(segment_st.Y, segment_fn.Y) || result.Y > Math.Max(segment_st.Y, segment_fn.Y)) return PointD.Empty;
+            PointD dif_ray = ray_dp - ray_start, dif_res = result - ray_start;
+            if (Math.Sign(dif_ray.X) == Math.Sign(dif_res.X) && Math.Sign(dif_ray.Y) == Math.Sign(dif_res.Y)) return result;
+            else return PointD.Empty;
+        }
+
     }
 }

@@ -19,7 +19,7 @@ namespace AIlanding
         public static GraphicsDevice my_device;
         public static SpriteBatch spriteBatch;
         public static int overpasscnt = 0;
-        public static bool save_graphics;
+        public static bool save_graphics = false, debug = true, iterate_b = false, center_drone = false;
         /// <summary>
         /// session_name, routel_name, routes_name
         /// </summary>

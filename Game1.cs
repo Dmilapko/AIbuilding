@@ -31,6 +31,7 @@ namespace AIbuilding
 
         protected override void Initialize()
         {
+            uint a = Color.Black.PackedValue;
             // TODO: Add your initialization logic here
             graphics.PreferredBackBufferWidth = 1920;
             graphics.PreferredBackBufferHeight = 1080;
