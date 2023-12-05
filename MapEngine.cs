@@ -149,7 +149,7 @@ namespace AIbuilding
         }
 
         //https://stackoverflow.com/a/24712129
-        private static double DistanceTo(double lat1, double lon1, double lat2, double lon2)
+        public static double DistanceTo(double lat1, double lon1, double lat2, double lon2)
         {
             double rlat1 = Math.PI * lat1 / 180;
             double rlat2 = Math.PI * lat2 / 180;
@@ -179,8 +179,9 @@ namespace AIbuilding
         public static PointD RotateLongtLat(PointD center, double radiusm, double theta)
         {
             // Convert input miles to degrees latitude and longitude.
-            var radiusLon = radiusm / (111319 * Math.Cos(center.Y * (Math.PI / 180)));
-            var radiusLat = radiusm / 110574;
+            // 110574+55.7*12.5
+            var radiusLon = radiusm / (111290 * Math.Cos(center.Y * (Math.PI / 180)));
+            var radiusLat = radiusm / 111290;
 
 
             return new PointD(center.X + radiusLon * Math.Sin(theta), center.Y + radiusLat * Math.Cos(theta)); 

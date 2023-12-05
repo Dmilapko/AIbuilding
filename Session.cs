@@ -47,6 +47,8 @@ namespace AIbuilding
         Label graphicslabel = new Label(135, 1050, -1, -1, "Save graphics: True", Program.font15, 15, 12, Color.Red.PackedValue);
         Label iterate_blabel  = new Label(310, 1050, -1, -1, "Iterate buildings: True", Program.font15, 15, 12, Color.Red.PackedValue);
         Label center_dlabel = new Label(500, 1050, -1, -1, "Center drone: False", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label dSlabel = new Label(500, 530, -1, -1, "Position deviation: 10.58m", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label dRlabel = new Label(500, 560, -1, -1, "Rotation deviation: 2.82deg", Program.font15, 15, 12, Color.Red.PackedValue);
         TextBox sessiontextbox = new TextBox(Program.my_device, 145, 197, 200, Program.font15, 15, 15);
         TextBox loadroutetextbox = new TextBox(Program.my_device, 145, 262, 200, Program.font15, 15, 15);
         TextBox saveroutetextbox = new TextBox(Program.my_device, 145, 297, 200, Program.font15, 15, 15);
@@ -59,7 +61,7 @@ namespace AIbuilding
         int test_position = 0;
         int progress_b = 3;
         List<PointD> points_on_track = new List<PointD>();
-        RealDrone mydr = new RealDrone();
+        RealDrone real_drone = new RealDrone(), abstract_drone = new RealDrone();
         bool flight = false;
 
         public Session()
@@ -95,21 +97,24 @@ namespace AIbuilding
             loadroutebutton.Click += Loadroutebutton_Click;
             saveroutebutton.Click += Saveroutebutton_Click;
             launchbutton.Click += Launchbutton_Click;
-            elements = new List<FormElement>() { center_dlabel, debuglabel, iterate_blabel, graphicslabel, dronespeedlabel, makeprogresslabel, loadprogresslabel, launchbutton, makeroutebutton, sessionbutton, loadroutebutton, saveroutebutton, sessionlabel, sessiontextbox, loadroutelabel, saveroutelabel, loadroutetextbox, saveroutetextbox, lengthroutelabel, positionroutelabel };
+            elements = new List<FormElement>() { dSlabel, dRlabel, debuglabel, iterate_blabel, graphicslabel, dronespeedlabel, makeprogresslabel, loadprogresslabel, launchbutton, makeroutebutton, sessionbutton, loadroutebutton, saveroutebutton, sessionlabel, sessiontextbox, loadroutelabel, saveroutelabel, loadroutetextbox, saveroutetextbox, lengthroutelabel, positionroutelabel };
         }
 
         private void Launchbutton_Click(object sender, ClickEventArgs e)
         {
             flight = !flight;
+            real_drone = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
             if (flight)
             {
-                mydr = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
+                abstract_drone = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
+                abstract_drone.abstract_INS = real_drone.INS;
+                abstract_drone.StartMainLoop();
                 launchbutton.text = "Abort flight";
             }
             else
             {
+                abstract_drone.alive = false;
                 launchbutton.text = "LAUNCH";
-                mydr = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
             }
         }
 
@@ -120,7 +125,7 @@ namespace AIbuilding
             points_on_track = Drone.GetTrack(curve, 50, -1);
             progress_b++;
             building_representation = Drone.GetBuildingRepresentations(route_buildings);
-            mydr = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
+            real_drone = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
             progress_b++;
         }
 
@@ -239,10 +244,15 @@ namespace AIbuilding
                 }
                 progress_b++;
                 CalculateTrack();
-                mydr.curlength = 0;
+                real_drone.curlength = 0;
                 session_loading = false;
             });
             load_thread.Start();
+        }
+
+        public void Stop()
+        {
+            abstract_drone.alive = real_drone.alive = false;
         }
 
         bool press_g = false, press_d = false, press_i = false, press_c = false;
@@ -281,14 +291,14 @@ namespace AIbuilding
                 {
                     if (keyboard.IsKeyDown(Keys.OemPlus))
                     {
-                        mydr.index_pos = Math.Min(mydr.index_pos + 1, route_building_indexes.Count - 1);
+                        real_drone.index_pos = Math.Min(real_drone.index_pos + 1, route_building_indexes.Count - 1);
                     }
                     if (keyboard.IsKeyDown(Keys.OemMinus))
                     {
-                        mydr.index_pos = Math.Max(mydr.index_pos - 1, 0);
+                        real_drone.index_pos = Math.Max(real_drone.index_pos - 1, 0);
                     }
                 }
-                positionroutelabel.text = "Current position : " + mydr.curlength.ToString();
+                positionroutelabel.text = "Current position : " + real_drone.curlength.ToString();
                 if (mouse.Position.ToVector2().InRect(MapMath.start_screen, MapMath.end_screen))
                 {
                     if (mouse.RightButton == ButtonState.Pressed)
@@ -330,13 +340,13 @@ namespace AIbuilding
             }
             if (!session_loading && route_building_indexes.Count > 0)
             {
-                if (!flight) mydr.GetRangeFindersDebug(mydr.index_pos, points_on_track[mydr.index_pos], mydr.rotation);
+                if (!flight) real_drone.GetRangeFindersDebug(real_drone.index_pos, points_on_track[real_drone.index_pos], real_drone.rotation);
                 else
                 {
-                    mydr.DirectCommand(keyboard);
-                    mydr.CalculateMovement(1);
-                    mydr.GetRangeFindersDebug(mydr.index_pos, mydr.position, mydr.rotation);
-                    if (Program.center_drone) map.center = MapMath.ScreenToCoordinates(MapMath.LongLatToScreen(mydr.position, map.center, map.level), map.center, map.level).ToVector2();
+                    real_drone.DirectCommand(keyboard);
+                    real_drone.CalculateMovement(1);
+                    real_drone.GetRangeFindersDebug(real_drone.index_pos, real_drone.position, real_drone.rotation);
+                    if (Program.center_drone) map.center = MapMath.ScreenToCoordinates(MapMath.LongLatToScreen(real_drone.position, map.center, map.level), map.center, map.level).ToVector2();
                 }
             }    
         }
@@ -385,17 +395,17 @@ namespace AIbuilding
                 {
                     if (!flight && Program.iterate_b)
                     {
-                        if (mydr.index_pos != prev_drpos)
+                        if (real_drone.index_pos != prev_drpos)
                         {
                             cnt_b = 0;
-                            prev_drpos = mydr.index_pos;
+                            prev_drpos = real_drone.index_pos;
                         }
-                        cnt_b = Math.Min(cnt_b, route_building_indexes[mydr.index_pos].Count);
+                        cnt_b = Math.Min(cnt_b, route_building_indexes[real_drone.index_pos].Count);
                     }
-                    else cnt_b = route_building_indexes[mydr.index_pos].Count;
+                    else cnt_b = route_building_indexes[real_drone.index_pos].Count;
                     for (int c = 0; c < cnt_b; c++)
                     {
-                        var building = route_buildings[route_building_indexes[mydr.index_pos][c]];
+                        var building = route_buildings[route_building_indexes[real_drone.index_pos][c]];
                         for (int i = 0; i < building.Count; i++)
                         {
                             Vector2 stpos = MapMath.LongLatToScreen(building[i], map.center, map.level);
@@ -404,19 +414,19 @@ namespace AIbuilding
                         }
                     }
                     cnt_b++;
-                    Program.spriteBatch.Draw(trackpoint, MapMath.LongLatToScreen(points_on_track[mydr.index_pos], map.center, map.level), null, Microsoft.Xna.Framework.Color.White, 0f, new Vector2(11.5f, 11.5f), MathF.Pow(1.1f, map.level - 15), SpriteEffects.None, 1);
-                    foreach (var item in mydr.debug_bbounds)
+                    Program.spriteBatch.Draw(trackpoint, MapMath.LongLatToScreen(points_on_track[real_drone.index_pos], map.center, map.level), null, Microsoft.Xna.Framework.Color.White, 0f, new Vector2(11.5f, 11.5f), MathF.Pow(1.1f, map.level - 15), SpriteEffects.None, 1);
+                    foreach (var item in real_drone.debug_bbounds)
                     {
                         Program.spriteBatch.Draw(building_edge, MapMath.LongLatToScreen(item, map.center, map.level), null, Microsoft.Xna.Framework.Color.White, 0f, new Vector2(10f, 10f), 0.5f * MathF.Pow(1.5f, map.level - 14), SpriteEffects.None, 1);
                     }
-                    mydr.debug_bbounds.Clear();
+                    real_drone.debug_bbounds.Clear();
                     if (flight)
                     {
-                        foreach (PointD hit_p in mydr.debug_hitpoints)
+                        foreach (PointD hit_p in real_drone.debug_hitpoints)
                         {
-                            if (hit_p != PointD.Empty) Program.spriteBatch.DrawLine(MapMath.LongLatToScreen(mydr.position, map.center, map.level), MapMath.LongLatToScreen(hit_p, map.center, map.level), Color.Green);
+                            if (hit_p != PointD.Empty) Program.spriteBatch.DrawLine(MapMath.LongLatToScreen(real_drone.position, map.center, map.level), MapMath.LongLatToScreen(hit_p, map.center, map.level), Color.Green);
                         }
-                        mydr.debug_hitpoints.Clear();
+                        real_drone.debug_hitpoints.Clear();
                     }
                 }
             }
@@ -424,13 +434,15 @@ namespace AIbuilding
             foreach (var item in elements) item.Draw(Program.spriteBatch);
             if (flight)
             {
-                dronespeedlabel.text = "Drone speed:" + (mydr.speed * 60 * 3.6).ToString("#.#") + "km/h";
-                Program.spriteBatch.Draw(drone_arrow, MapMath.LongLatToScreen(mydr.position, map.center, map.level), null, Microsoft.Xna.Framework.Color.White, (float)mydr.rotation - MathF.PI / 2, new Vector2(37.5f, 37.5f), MathF.Pow(1.3f, map.level - 15), SpriteEffects.None, 1);
+                dronespeedlabel.text = "Drone speed:" + (real_drone.speed * 60 * 3.6).ToString("#.#") + "km/h";
+//                Program.spriteBatch.Draw(drone_arrow, MapMath.LongLatToScreen(real_drone.position, map.center, map.level), null, Color.Black, (float)real_drone.rotation - MathF.PI / 2, new Vector2(37.5f, 37.5f), MathF.Pow(1.3f, map.level - 15), SpriteEffects.None, 1);
                 Program.spriteBatch.Draw(gforce_meter, new Vector2(170, 1000), null, Color.White, 0, new Vector2(50, 50), 1f, SpriteEffects.None, 1);
                 Program.spriteBatch.Draw(gforce_ball, new Vector2((float)(170 + Math.Pow(2, 1/ 0.61728395061) * 10 * Math.Sin(2)), (float)(1000 - Math.Pow(2, 1 / 0.61728395061) * 10 * Math.Cos(2))), null, Color.White, 0, new Vector2(4.5f, 4.5f), 1f, SpriteEffects.None, 1);
                 Program.spriteBatch.Draw(angle_indicator, new Vector2(60, 1005), null, Color.White, 0, new Vector2(42, 38), 1.1f, SpriteEffects.None, 1);
-                Program.spriteBatch.Draw(angle_indicator_line, new Vector2(60, 1005), null, Color.White, (float)mydr.roll, new Vector2(29, 9), 1.1f, SpriteEffects.None, 1);
-                Program.spriteBatch.Draw(rotation_bar, new Vector2(60, 1005), null, Color.White, (float)mydr.target_a, new Vector2(2, 39), 1f, SpriteEffects.None, 1);
+                Program.spriteBatch.Draw(angle_indicator_line, new Vector2(60, 1005), null, Color.White, (float)real_drone.roll, new Vector2(29, 9), 1.1f, SpriteEffects.None, 1);
+                Program.spriteBatch.Draw(rotation_bar, new Vector2(60, 1005), null, Color.White, (float)real_drone.target_a, new Vector2(2, 39), 1f, SpriteEffects.None, 1);
+                Program.spriteBatch.Draw(drone_arrow, MapMath.LongLatToScreen(abstract_drone.position, map.center, map.level), null, new Color(0, 0, 0, 128), (float)abstract_drone.rotation - MathF.PI / 2, new Vector2(37.5f, 37.5f), MathF.Pow(1.3f, map.level - 15), SpriteEffects.None, 1);
+                Program.spriteBatch.Draw(abstract_drone.debug_matrice, new Vector2(300, 500), Color.White);
             }
         }
     }
