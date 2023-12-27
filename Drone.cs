@@ -9,13 +9,135 @@ using System.Threading.Tasks;
 using System.Dynamic;
 using System.Xml.Linq;
 using System.Drawing;
-using System.Text.Json.Serialization;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework.Input;
 using System.ComponentModel.DataAnnotations.Schema;
+using AIlanding;
+using MonogameTextBoxLib;
+using System.IO;
 
 namespace AIbuilding
 {
+    public class DroneCharacteristics
+    {
+        public double rolla = 0.0002d;
+        public double maxs = 1;
+        public double acc = 0.003;
+        public double rotdes = 0.003d;
+        public double roteff = 0.006d;
+        public double maxa = 0.6;
+        public int raycount = 20;
+        public double raylength = 1000;
+        public double pos_mult = 225;
+        public double rot_mult = 15;
+        public double raypow = 0.5;
+        public double displayscale = 0.002;
+        public int ignorebest = 0;
+        public int ignoreworst = 0;
+        public double rangefiders_error = 0;
+        public double loops_per_second = 5;
+
+        public DroneCharacteristics(double rolla, double maxs, double acc, double rotdes, double roteff, double maxa, int raycount, double raylength, double pos_mult, double rot_mult, double raypow, double displayscale, int ignorebest, int ignoreworst, double rangefiders_error, int loops_per_second)
+        {
+            this.rolla = rolla / 60 / 60 * Math.PI / 180;
+            this.maxs = maxs / 60 / 3.6;
+            this.acc = acc / 60 / 60 / 3.6;
+            this.rotdes = rotdes / 60 * Math.PI / 180;
+            this.roteff = roteff / 60 * Math.PI / 180;
+            this.maxa = maxa * Math.PI / 180;
+            this.raycount = raycount;
+            this.raylength = raylength;
+            this.pos_mult = pos_mult;
+            this.rot_mult = rot_mult;
+            this.raypow = raypow;
+            this.displayscale = displayscale;
+            this.ignorebest = ignorebest;
+            this.ignoreworst = ignoreworst;
+            this.rangefiders_error = rangefiders_error;
+            this.loops_per_second = loops_per_second;
+        }
+
+        public DroneCharacteristics(TextBox rolla, TextBox maxs, TextBox acc, TextBox rotdes, TextBox roteff, TextBox maxa, TextBox raycount, TextBox raylength, TextBox pos_mult, TextBox rot_mult, TextBox raypow, TextBox displayscale, TextBox ignorebest, TextBox ignoreworst, TextBox rangefiders_error, TextBox loops_per_second, out bool success)
+        {
+            success = true;
+            success &= rolla.MakeAction(new Action(() => { this.rolla = Convert.ToDouble(rolla.text) / 60 / 60 * Math.PI / 180; }), null);
+            success &= maxs.MakeAction(new Action(() => { this.maxs = Convert.ToDouble(maxs.text) / 60 / 3.6; }), null);
+            success &= acc.MakeAction(new Action(() => { this.acc = Convert.ToDouble(acc.text) / 60 / 60; }), null);
+            success &= rotdes.MakeAction(new Action(() => { this.rotdes = Convert.ToDouble(rotdes.text) / 60 * Math.PI / 180; }), null);
+            success &= roteff.MakeAction(new Action(() => { this.roteff = Convert.ToDouble(roteff.text) / 60 * Math.PI / 180; }), null);
+            success &= maxa.MakeAction(new Action(() => { this.maxa = Convert.ToDouble(maxa.text) * Math.PI / 180; }), null);
+            success &= raycount.MakeAction(new Action(() => { this.raycount = Convert.ToInt32(raycount.text); }), null);
+            success &= raylength.MakeAction(new Action(() => { this.raylength = Convert.ToDouble(raylength.text); }), null);
+            success &= pos_mult.MakeAction(new Action(() => { this.pos_mult = Convert.ToDouble(pos_mult.text); }), null);
+            success &= rot_mult.MakeAction(new Action(() => { this.rot_mult = Convert.ToDouble(rot_mult.text); }), null);
+            success &= raypow.MakeAction(new Action(() => { this.raypow = Convert.ToDouble(raypow.text); }), null);
+            success &= displayscale.MakeAction(new Action(() => { this.displayscale = Convert.ToDouble(displayscale.text); }), null);
+            success &= ignorebest.MakeAction(new Action(() => { this.ignorebest = Convert.ToInt32(ignorebest.text); }), null);
+            success &= ignoreworst.MakeAction(new Action(() => { this.ignoreworst = Convert.ToInt32(ignoreworst.text); }), null);
+            success &= rangefiders_error.MakeAction(new Action(() => { this.rangefiders_error = Convert.ToDouble(rangefiders_error.text); }), null);
+            success &= loops_per_second.MakeAction(new Action(() => { this.loops_per_second = Convert.ToDouble(loops_per_second.text); }), null);
+        }
+
+        public static DroneCharacteristics FromFile(string filename)
+        {
+            DroneCharacteristics res = new DroneCharacteristics();
+
+            using (BinaryReader binreader = new BinaryReader(new FileStream("Drones\\" + Program.setupProp["dronel_name"], FileMode.Open, FileAccess.Read)))
+            {
+                res.rolla = binreader.ReadDouble();
+                res.maxs = binreader.ReadDouble();
+                res.acc = binreader.ReadDouble();
+                res.rotdes = binreader.ReadDouble();
+                res.roteff = binreader.ReadDouble();
+                res.maxa = binreader.ReadDouble();
+                res.raycount = binreader.ReadInt32();
+                res.raylength = binreader.ReadDouble();
+                res.pos_mult = binreader.ReadDouble();
+                res.rot_mult = binreader.ReadDouble();
+                res.raypow = binreader.ReadDouble();
+                res.displayscale = binreader.ReadDouble();
+                res.ignorebest = binreader.ReadInt32();
+                res.ignoreworst = binreader.ReadInt32();
+                res.rangefiders_error = binreader.ReadDouble();
+                res.loops_per_second = binreader.ReadDouble();
+            }
+            return res;
+        }
+
+        public void SaveToFile(string filename)
+        {
+            using (FileStream file = new FileStream("Drones\\" + filename, FileMode.Create, System.IO.FileAccess.Write))
+            {
+                MemoryStream ms = new MemoryStream();
+                using (BinaryWriter binwriter = new BinaryWriter(ms, Encoding.Default, true))
+                {
+                    binwriter.Write(rolla);
+                    binwriter.Write(maxs);
+                    binwriter.Write(acc);
+                    binwriter.Write(rotdes);
+                    binwriter.Write(roteff);
+                    binwriter.Write(maxa);
+                    binwriter.Write(raycount);
+                    binwriter.Write(raylength);
+                    binwriter.Write(pos_mult);
+                    binwriter.Write(rot_mult);
+                    binwriter.Write(raypow);
+                    binwriter.Write(displayscale);
+                    binwriter.Write(ignorebest);
+                    binwriter.Write(ignoreworst);
+                    binwriter.Write(rangefiders_error);
+                    binwriter.Write(loops_per_second);
+                }
+                ms.WriteTo(file);
+            }
+        }
+
+        public DroneCharacteristics()
+        {
+
+        }
+    }
+
     public class BeizerSegment
     {
         public PointD p0, p1, p2;
@@ -83,6 +205,7 @@ namespace AIbuilding
 
         public BuildingRepresentation(List<PointD> points)
         {
+            if (points[0] == points.Last()) points = points.GetRange(0, points.Count - 1);
             centroid = MapMath.GetCentroid(points);
             double max_dist = 0;
             List<Pair<double, double>> points_dl =  new List<Pair<double, double>>();

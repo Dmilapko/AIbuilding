@@ -21,12 +21,12 @@ namespace AIlanding
         public static GraphicsDevice my_device;
         public static SpriteBatch spriteBatch;
         public static int overpasscnt = 0;
-        public static bool save_graphics = false, debug = true, iterate_b = false, center_drone = false;
         /// <summary>
         /// session_name, routel_name, routes_name
         /// </summary>
         static public Dictionary<string, string> setupProp = new Dictionary<string, string>();
         public static string setuppath = "setup";
+        public static bool save_graphics = false;
 
         static public void ChangeSetup()
         {
@@ -45,6 +45,17 @@ namespace AIlanding
         [STAThread]
         static void Main()
         {
+            List<double> rrpp = new List<double>();
+            for (int i = 0; i < 1000; i++)
+            {
+                double res = 0;
+                for (int j = 0; j < 11; j++)
+                {
+                    res += MHeleper.RandomDouble();
+                }
+                rrpp.Add(res / 11);
+            }
+            rrpp.Sort();
             if ((File.Exists(setuppath)) && (File.ReadAllText(setuppath) != ""))
             {
                 GetSetup();
@@ -54,6 +65,8 @@ namespace AIlanding
                 setupProp.Add("session_name", "default_ses");
                 setupProp.Add("routel_name", "default_route");
                 setupProp.Add("routes_name", "default_route");
+                setupProp.Add("dronel_name", "default_drone");
+                setupProp.Add("drones_name", "default_drone");
                 ChangeSetup();
             }
             if (!Directory.Exists(setupProp["session_name"])) Directory.CreateDirectory(setupProp["session_name"]);

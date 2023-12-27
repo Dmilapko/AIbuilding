@@ -282,7 +282,7 @@ namespace AIbuilding
                 centerY += (poly[i].Y + poly[j].Y) * temp;
             }
 
-            if (Math.Abs(accumulatedArea) < 1E-7f)
+            if (Math.Abs(accumulatedArea) < 1E-8f)
                 return new PointD(0,0);  // Avoid division by zero
 
             accumulatedArea *= 3f;

@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonoHelper", "..\MonoHelper
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonogameLabel", "..\MonogameLabel\MonogameLabel\MonogameLabel.csproj", "{030551C7-AE58-49A5-AF17-0E80B56984D2}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonogameTextBoxLib", "..\MonogameTextBoxLib\MonogameTextBoxLib\MonogameTextBoxLib.csproj", "{EBEBB0A5-1BAE-425D-8BC8-BFFE068A1344}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{030551C7-AE58-49A5-AF17-0E80B56984D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBEBB0A5-1BAE-425D-8BC8-BFFE068A1344}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBEBB0A5-1BAE-425D-8BC8-BFFE068A1344}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBEBB0A5-1BAE-425D-8BC8-BFFE068A1344}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBEBB0A5-1BAE-425D-8BC8-BFFE068A1344}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

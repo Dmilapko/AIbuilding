@@ -10,10 +10,12 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AIlanding;
+using System.Security.Cryptography.X509Certificates;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AIbuilding
 {
+
     internal class RealDrone
     {
         List<BuildingRepresentation> buildings = new List<BuildingRepresentation>();
@@ -27,50 +29,54 @@ namespace AIbuilding
         public double rotation = 0;
         public double curlength;
         public double roll = 0d;
-        double rolla = 0.0002d;
         private double rolls = 0;
-        double maxs = 1;
         public double speed = 0;
-        double acc = 0.003;
-        double rotdes = 0.003d;
-        double roteff = 0.006d;
-        double maxa = 0.6;
-        double air_res = 1*0.003;
-        public double target_a;
-        public int ray_count = 20;
-        int loops_per_second = 5;
-        public Texture2D debug_matrice;
-
+        public double target_a = 0;
+        public DroneCharacteristics characteristics = new DroneCharacteristics();
 
         public RealDrone(List<BuildingRepresentation> buildings, List<List<int>> route_building_indexes, BeizerCurve track) 
         {
-            debug_matrice = new Texture2D(Program.my_device, 600, 100);
             this.buildings = buildings;
             this.track = track;
             this.route_building_indexes = route_building_indexes;
             this.rotation = MapMath.AngleLongLat(track.segments[0].GetPoint(0), track.segments[0].GetPoint(0.01));
             //this.rotation = Math.PI / 2;
             position = track.segments[0].GetPoint(0);
+            this.speed = characteristics.maxs * 0.9;
+            wanted_angle = this.rotation;
         }
 
-        public RealDrone() 
+        public RealDrone()
         {
-            air_res = 2 / maxs;
+
+        }
+
+        public void CalculateCurLength()
+        {
+            var next_points = Drone.GetTrack(track, 1, 101, curlength);
+            double mind = double.MaxValue; int cur_lt = 0;
+            for (int i = 0; i < Math.Min(100, next_points.Count - 1); i++)
+            {
+                double cur_d = MapMath.DistanceLongLat(position, next_points[i + 1]);
+                if (cur_d < mind) { cur_lt = i; mind = cur_d; }
+            }
+            curlength += cur_lt;
+            index_pos = (int)(curlength / 50);
         }
 
         public void CalculateMovement(double thrust)
         {
             //PointD prev_pos = position; double prev_rotation = rotation, prev_speed = speed;
             PointD alter_pos = MapMath.RotateLongtLat(position, speed, rotation);
-            double alt_rotation = rotation + roll * roteff;
-            if (target_a > maxa) target_a = maxa;
-            if (target_a < -maxa) target_a = -maxa;
+            double alt_rotation = rotation + roll * characteristics.roteff;
+            if (target_a > characteristics.maxa) target_a = characteristics.maxa;
+            if (target_a < -characteristics.maxa) target_a = -characteristics.maxa;
             double minabs = 1000, minrolls = 0;
             for (int i = -1; i <= 1; i++)
             {
-                double prolls = rolls + i * rolla;
-                double prolla = -rolla * Math.Sign(prolls);
-                double n = Math.Abs(prolls / rolla);
+                double prolls = rolls + i * characteristics.rolla;
+                double prolla = -characteristics.rolla * Math.Sign(prolls);
+                double n = Math.Abs(prolls / characteristics.rolla);
                 double ps = Math.Abs((2 * prolls + prolla * (n - 1)) / 2 * n - (target_a - roll));
                 if (prolla == 0) ps = Math.Abs(target_a - roll);
                 if (ps < minabs) { minabs = ps; minrolls = prolls; }
@@ -78,24 +84,18 @@ namespace AIbuilding
             rolls = minrolls;
             roll += rolls;
 
-            speed -= speed * Math.Abs(roll) * rotdes;
-            rotation += roll * roteff;
-            speed -= speed * air_res;
-            speed += acc;
+            speed -= speed * Math.Abs(roll) * characteristics.rotdes;
+            rotation += roll * characteristics.roteff;
+            speed -= speed / characteristics.maxs * characteristics.acc;
+            speed += characteristics.acc;
             position = MapMath.RotateLongtLat(position, speed, rotation);
 
-            var next_points = Drone.GetTrack(track, 1, 101, curlength);
-            double mind = double.MaxValue; int cur_lt = 0;
-            for (int i = 0; i < Math.Min(100, next_points.Count-1); i++)
-            {
-                double cur_d = MapMath.DistanceLongLat(position, next_points[i+1]);
-                if (cur_d < mind) { cur_lt = i; mind = cur_d; }
-            }
-            curlength += cur_lt;
-            index_pos = (int)Math.Round(curlength / 50);
-            rotation %= 2*Math.PI;
-            
-            INS.CalcSpeed(new PointD(0, MapMath.DistanceLongLat(alter_pos, position)).Turn(MapMath.AngleLongLat(alter_pos, position) - rotation), rotation - alt_rotation);
+            CalculateCurLength();
+
+            rotation.Normalize(Math.PI * 2);
+
+            INS.AddData(new PointD(0, MapMath.DistanceLongLat(alter_pos, position)).Turn(MapMath.AngleLongLat(alter_pos, position) - rotation), MHeleper.AngleDif(rotation, alt_rotation));
+
         }
 
 
@@ -114,28 +114,91 @@ namespace AIbuilding
 
         public DroneINS abstract_INS = new DroneINS(12, 1000);
         public List<double> abstract_RangeFinders = new List<double>();
+        public bool debug_abstract_scalc = false;
+        public bool debug_abstract_fcalc = false;
+        public List<PointD> debug_abstract_posdev = new List<PointD>();
+        public double cur_pos_deviation = 0;
+        public PointD posch = new PointD(0, 0);
+        public double wanted_angle = 0;
 
-        public void CalculateMovementAbstract()
+
+        public void CalculateMovementAbstract(DateTime start_time)
         {
+            if (abstract_INS.locked_data.Count == 0 || abstract_RangeFinders.Count == 0) return;
+            debug_abstract_scalc = true;
+            abstract_INS.ProcessData();
+
+            // ---------------- sync storage -----------------------------------
             PointD prev_pos = position;
+            double prev_rot = rotation;
+            List<double> current_abstract_RangeFinders = new List<double>(abstract_RangeFinders);
+            // ---------------- sync storage -----------------------------------
+
             PointD meter_pos = abstract_INS.res_pos;
-            double prev_rot = rotation, difr;
-            lock (abstract_INS)
+            position = MapMath.RotateLongtLat(position, meter_pos.Length(), meter_pos.Angle());
+            rotation += abstract_INS.res_rot;
+            
+            CalculateCurLength();
+
+            List<PointD> cur_debug_abstract_posdev = new List<PointD>();
+            List<double> prob_pos  = new List<double>(); //= abstract_INS.GetMyProbability();
+
+            double min_score = double.MaxValue;
+            PointD min_pos = position; double min_rot = rotation;
+            var cur_oper_list = abstract_INS.GetMyProbability();
+            var debug_cur_oper_list = DroneINS.debug_oper_lists[abstract_INS.res_t - 1];
+            int cur_dcol = 0;
+            int active_rangefinders = 0;
+            foreach (var item in current_abstract_RangeFinders)
             {
-                if (abstract_INS.res_t == 0) return;
-                position = MapMath.RotateLongtLat(position, meter_pos.Length(), meter_pos.Angle());
-                rotation += abstract_INS.res_rot;
-                difr = MHeleper.Normalize(rotation, 2 * Math.PI) - MHeleper.Normalize(prev_rot, 2 * Math.PI);
-                if (Math.Abs(difr) > Math.PI) difr = MHeleper.Normalize(rotation + Math.PI, 2 * Math.PI) - MHeleper.Normalize(prev_rot + Math.PI, 2 * Math.PI);
+                if (item < 10000) active_rangefinders++;
             }
-         /*   Color[] cd = new Color[600 * 100];
-            var al = abstract_INS.probabilities[12];
-            for (int i = 0; i < al.Count; i++)
+            cur_pos_deviation = abstract_INS.res_t * abstract_INS.pos_deviation * characteristics.pos_mult * Math.Pow(active_rangefinders / (double)characteristics.raycount, characteristics.raypow);
+            double cur_rot_deviation = abstract_INS.res_t * abstract_INS.rot_deviation * characteristics.rot_mult * Math.Pow(active_rangefinders / (double)characteristics.raycount, characteristics.raypow);
+            HashSet<double> lol_o = new HashSet<double>();
+            int sel_i = 0;
+            for (int c = 0; c < cur_oper_list.Count; c++)
             {
-                cd[(int)Math.Round(al[i] * 100)] = Color.Red;
+                if ((cur_dcol != debug_cur_oper_list.Count) && debug_cur_oper_list[cur_dcol].First == c)
+                {
+                    cur_debug_abstract_posdev.Add(cur_pos_deviation*debug_cur_oper_list[cur_dcol].Second.Turn(rotation));
+                    if (debug_cur_oper_list[cur_dcol].Second.X != 0) cur_debug_abstract_posdev.Add(cur_pos_deviation*(new PointD(-1, 1) * debug_cur_oper_list[cur_dcol].Second).Turn(rotation));
+                    if (debug_cur_oper_list[cur_dcol].Second.Y != 0) cur_debug_abstract_posdev.Add(cur_pos_deviation*(new PointD(1, -1) * debug_cur_oper_list[cur_dcol].Second).Turn(rotation));
+                    if (debug_cur_oper_list[cur_dcol].Second.X != 0  && debug_cur_oper_list[cur_dcol].Second.Y != 0) cur_debug_abstract_posdev.Add(cur_pos_deviation * (new PointD(-1, -1) * debug_cur_oper_list[cur_dcol].Second).Turn(rotation));
+                    cur_dcol++;
+                }
+                PointD meter_proposed_pos = cur_oper_list[c].First * cur_pos_deviation;
+                PointD proposed_position = MapMath.RotateLongtLat(position, meter_proposed_pos.Length(), rotation + meter_proposed_pos.Angle());
+                double proposed_rotation = rotation + cur_oper_list[c].Second * cur_rot_deviation;
+                List<double> res_scan = GetRangeFinders(index_pos, proposed_position, proposed_rotation);
+                double difs = 0;
+                List<double> diflist = new List<double>();
+                for (int i = 0; i < res_scan.Count; i++)
+                {
+                    diflist.Add(Math.Abs(res_scan[i] - current_abstract_RangeFinders[i]));
+                }
+                diflist.OrderByDescending(c => c).ToArray();
+                for (int i = 0; i < diflist.Count; i++)
+                {
+                    difs += diflist[i];
+                }
+                lol_o.Add(difs);
+                if (difs < min_score)
+                {
+                    sel_i = c;
+                    min_score = difs;
+                    min_pos = proposed_position;
+                    min_rot = proposed_rotation;
+                    posch = (cur_pos_deviation * cur_oper_list[c].First).Turn(rotation);
+                }
             }
-            debug_matrice.SetData(cd);*/
-            abstract_INS.Reset(new PointD(0, MapMath.DistanceLongLat(prev_pos, position)).Turn(MapMath.AngleLongLat(prev_pos, position)), difr);
+            position = min_pos; rotation = min_rot;
+            abstract_INS.Reset(new PointD(0, MapMath.DistanceLongLat(prev_pos, position)).Turn(MapMath.AngleLongLat(prev_pos, position)), MHeleper.AngleDif(rotation, prev_rot));
+            PointD target_poss = MapMath.RotateLongtLat(position, abstract_INS.sum_v.Length() * 60 * 0.5, abstract_INS.sum_v.Angle());
+            PointD target_posf = Drone.GetTrack(track, 1, 2, curlength + abstract_INS.sum_v.Length() * 60 * 3)[0];
+            target_a = MHeleper.AngleDif(MapMath.AngleLongLat(target_poss, target_posf), rotation);
+            debug_abstract_posdev = cur_debug_abstract_posdev;
+            debug_abstract_fcalc = true;
         }
 
         public void StartMainLoop()
@@ -151,15 +214,17 @@ namespace AIbuilding
         public void MainLoop()
         {
             // 1e7 - ticks in one second
-            double time_loop = 1e7 / (double)loops_per_second;
+            double time_loop = 1e7 / (double)characteristics.loops_per_second;
             while (true)
             {
                 if (!alive) break;
                 DateTime start = DateTime.Now;
-                CalculateMovementAbstract();
-                Thread.Sleep(new TimeSpan((int)Math.Max(0, time_loop - (DateTime.Now - start).Ticks)));
+                CalculateMovementAbstract(start);
+                var tts = new TimeSpan((int)Math.Max(0, time_loop - (DateTime.Now - start).Ticks));
+                Thread.Sleep(tts);
             }
         }
+
 
 
         public List<PointD> debug_bbounds = new List<PointD>();
@@ -167,11 +232,12 @@ namespace AIbuilding
         public List<double> GetRangeFindersDebug(int chunk, PointD meas_pos, double meas_a)
         {
             debug_hitpoints.Clear();
-            List<double> res = new List<double>(ray_count);
-            for (int i = 0; i < ray_count; i++) res.Add(double.MaxValue);
-            for (int i = 0; i < ray_count; i++) debug_hitpoints.Add(PointD.Empty);
-            double ray_interval = Math.PI*2 / (double)ray_count;
-            for (int i = 0; i < ray_count; i++)
+            debug_bbounds.Clear();
+            List<double> res = new List<double>(characteristics.raycount);
+            for (int i = 0; i < characteristics.raycount; i++) res.Add(10000);
+            for (int i = 0; i < characteristics.raycount; i++) debug_hitpoints.Add(PointD.Empty);
+            double ray_interval = Math.PI*2 / (double)characteristics.raycount;
+            for (int i = 0; i < characteristics.raycount; i++)
             {
                 PointD intersection_point = MapMath.RotateLongtLat(meas_pos, 1000, meas_a + i * ray_interval);
                 debug_hitpoints[i] = intersection_point;
@@ -182,21 +248,21 @@ namespace AIbuilding
                 double rot_width = buildings[c].GetWidth(MapMath.AngleLongLat(meas_pos, buildings[c].centroid) - Math.PI / 2);
                 double dist_b = MapMath.DistanceLongLat(meas_pos, buildings[c].centroid);
                 debug_bbounds.Add(cur_bound.leftp); debug_bbounds.Add(cur_bound.rightp);
-                int iter_st = 0, iter_fn = ray_count - 1;
+                int iter_st = 0, iter_fn = characteristics.raycount - 1;
                 if (dist_b > rot_width)
                 {
                     double st_a = MapMath.AngleLongLat(meas_pos, cur_bound.leftp) - 0.1;
                     double fn_a = MapMath.AngleLongLat(meas_pos, cur_bound.rightp) + 0.1;
-                    iter_st = (((int)Math.Ceiling((st_a - meas_a) / ray_interval) % ray_count) + ray_count) % ray_count;
-                    iter_fn = (((int)Math.Floor((fn_a - meas_a) / ray_interval) % ray_count) + ray_count) % ray_count;
-                    if (ray_count - iter_st + iter_fn < ray_count / 2)
+                    iter_st = (((int)Math.Ceiling((st_a - meas_a) / ray_interval) % characteristics.raycount) + characteristics.raycount) % characteristics.raycount;
+                    iter_fn = (((int)Math.Floor((fn_a - meas_a) / ray_interval) % characteristics.raycount) + characteristics.raycount) % characteristics.raycount;
+                    if (characteristics.raycount - iter_st + iter_fn < characteristics.raycount / 2)
                     {
-                        iter_st -= ray_count;
+                        iter_st -= characteristics.raycount;
                     }    
                 }
                 for (int i = iter_st; i <= iter_fn; i++) 
                 {
-                    int rr = (i % ray_count + ray_count) % ray_count;
+                    int rr = (i % characteristics.raycount + characteristics.raycount) % characteristics.raycount;
                     if (res[rr] > dist_b - rot_width)
                     {
                         for (int j = 0; j < buildings[c].points.Count; j++)
@@ -220,29 +286,29 @@ namespace AIbuilding
 
         public List<double> GetRangeFinders(int chunk, PointD meas_pos, double meas_a)
         {
-            List<double> res = new List<double>(ray_count);
-            for (int i = 0; i < ray_count; i++) res.Add(double.MaxValue);
-            double ray_interval = Math.PI * 2 / (double)ray_count;
+            List<double> res = new List<double>(characteristics.raycount);
+            for (int i = 0; i < characteristics.raycount; i++) res.Add(10000);
+            double ray_interval = Math.PI * 2 / (double)characteristics.raycount;
             foreach (int c in route_building_indexes[chunk])
             {
                 BuildingBound cur_bound = buildings[c].GetBound(MapMath.AngleLongLat(meas_pos, buildings[c].centroid));
                 double rot_width = buildings[c].GetWidth(MapMath.AngleLongLat(meas_pos, buildings[c].centroid) - Math.PI / 2);
                 double dist_b = MapMath.DistanceLongLat(meas_pos, buildings[c].centroid);
-                int iter_st = 0, iter_fn = ray_count - 1;
+                int iter_st = 0, iter_fn = characteristics.raycount - 1;
                 if (dist_b > rot_width)
                 {
                     double st_a = MapMath.AngleLongLat(meas_pos, cur_bound.leftp) - 0.1;
                     double fn_a = MapMath.AngleLongLat(meas_pos, cur_bound.rightp) + 0.1;
-                    iter_st = (((int)Math.Ceiling((st_a - meas_a) / ray_interval) % ray_count) + ray_count) % ray_count;
-                    iter_fn = (((int)Math.Floor((fn_a - meas_a) / ray_interval) % ray_count) + ray_count) % ray_count;
-                    if (ray_count - iter_st + iter_fn < ray_count / 2)
+                    iter_st = (((int)Math.Ceiling((st_a - meas_a) / ray_interval) % characteristics.raycount) + characteristics.raycount) % characteristics.raycount;
+                    iter_fn = (((int)Math.Floor((fn_a - meas_a) / ray_interval) % characteristics.raycount) + characteristics.raycount) % characteristics.raycount;
+                    if (characteristics.raycount - iter_st + iter_fn < characteristics.raycount / 2)
                     {
-                        iter_st -= ray_count;
+                        iter_st -= characteristics.raycount;
                     }
                 }
                 for (int i = iter_st; i <= iter_fn; i++)
                 {
-                    int rr = (i % ray_count + ray_count) % ray_count;
+                    int rr = (i % characteristics.raycount + characteristics.raycount) % characteristics.raycount;
                     if (res[rr] > dist_b - rot_width)
                     {
                         for (int j = 0; j < buildings[c].points.Count; j++)
