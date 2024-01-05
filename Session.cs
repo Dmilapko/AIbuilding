@@ -1,4 +1,4 @@
-﻿using AIlanding;
+﻿using AIbuilding;
 using FormElementsLib;
 using MathNet.Numerics;
 using Microsoft.VisualBasic;
@@ -16,6 +16,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -28,7 +29,7 @@ namespace AIbuilding
     {
         MapEngine map;
         PhysicsEngine physics;
-        Texture2D trackpoint, building_edge, drone_arrow, angle_indicator, angle_indicator_line, gforce_meter, gforce_ball, rotation_bar;
+        Texture2D trackpoint, trackselectpoint, building_edge, drone_arrow, angle_indicator, angle_indicator_line, gforce_meter, gforce_ball, rotation_bar;
         bool press_mr = false;
         List<PointD> trackpoints = new List<PointD>();
         Texture2D map_mask;
@@ -50,20 +51,22 @@ namespace AIbuilding
         Label positionroutelabel = new Label(10, 485, -1, -1, "Current position : 0m", Program.font15, 15, 15, Color.Red.PackedValue);
         Label loadprogresslabel = new Label(480, 265, -1, -1, "5/5", Program.font15, 15, 15, Color.Red.PackedValue);
         Label makeprogresslabel = new Label(170, 410, -1, -1, "5/5", Program.font15, 15, 15, Color.Red.PackedValue);
-        Label dronespeedlabel = new Label(10, 580, -1, -1, "Drone speed: 179km/h", Program.font15, 15, 15, Color.Red.PackedValue);
+        Label dronespeedlabel = new Label(10, 580, -1, -1, "Drone speed: 0km/h", Program.font15, 15, 15, Color.Red.PackedValue);
         Label debuglabel = new Label(10, 1050, -1, -1, "Debug: True", Program.font15, 15, 12, Color.Red.PackedValue);
         Label graphicslabel = new Label(150, 1050, -1, -1, "Save graphics: True", Program.font15, 15, 12, Color.Red.PackedValue);
         Label center_dlabel = new Label(350, 1050, -1, -1, "Center drone: False", Program.font15, 15, 12, Color.Red.PackedValue);
         Label manual_dlabel = new Label(550, 1050, -1, -1, "Manual control: False", Program.font15, 15, 12, Color.Red.PackedValue);
-        Label dSlabel = new Label(550, 560, -1, -1, "Position deviation: 10.58m", Program.font15, 15, 12, Color.Red.PackedValue);
-        Label dRlabel = new Label(550, 580, -1, -1, "Rotation deviation: 2.82deg", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label use_INSlabel = new Label(750, 1050, -1, -1, "Use only INS: False", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label dSlabel = new Label(550, 560, -1, -1, "Position deviation: 0m", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label dRlabel = new Label(550, 580, -1, -1, "Rotation deviation: 0deg", Program.font15, 15, 12, Color.Red.PackedValue);
         Label maxspeedlabel = new Label(10, 745, -1, -1, "Max speed (km/h):", Program.font15, 15, 12, Color.Red.PackedValue);
         Label acclabel = new Label(10, 775, -1, -1, "Acceleration (m/s):", Program.font15, 15, 12, Color.Red.PackedValue);
         Label maxrolllabel = new Label(10, 805, -1, -1, "Max. roll (deg):", Program.font15, 15, 12, Color.Red.PackedValue);
         Label rollalabel = new Label(10, 835, -1, -1, "Roll acceleration (deg/s):", Program.font15, 15, 12, Color.Red.PackedValue);
-        Label rotefflabel = new Label(10, 865, -1, -1, "Rotation/roll coeficient:", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label rotefflabel = new Label(10, 865, -1, -1, "dRotation/roll coeficient:", Program.font15, 15, 12, Color.Red.PackedValue);
         Label rotdeslabel = new Label(10, 895, -1, -1, "dSpeed/roll coeficient:", Program.font15, 15, 12, Color.Red.PackedValue);
-        //Label rotdeslabel = new Label(10, 895, -1, -1, "dSpeed/roll coeficient:", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label INSposdevlabel = new Label(500, 655, -1, -1, "16bit INS pos. dev.:", Program.font15, 15, 12, Color.Red.PackedValue);
+        Label INSrotdevlabel = new Label(500, 685, -1, -1, "16bit INS rot. dev.:", Program.font15, 15, 12, Color.Red.PackedValue);
         Label loopspersecondlabel = new Label(500, 715, -1, -1, "Loops per second:", Program.font15, 15, 12, Color.Red.PackedValue);
         Label raycountlabel = new Label(500, 745, -1, -1, "Ray count:", Program.font15, 15, 12, Color.Red.PackedValue);
         Label raylengthlabel = new Label(500, 775, -1, -1, "Max ray distance (m):", Program.font15, 15, 12, Color.Red.PackedValue);
@@ -85,6 +88,8 @@ namespace AIbuilding
         TextBox rollatextbox = new TextBox(Program.my_device, 195, 832, 100, Program.font15, 15, 12);
         TextBox rotefftextbox = new TextBox(Program.my_device, 195, 862, 100, Program.font15, 15, 12);
         TextBox rotdestextbox = new TextBox(Program.my_device, 195, 892, 100, Program.font15, 15, 12);
+        TextBox INSposdevtextbox = new TextBox(Program.my_device, 695, 652, 100, Program.font15, 15, 12);
+        TextBox INSrotdevtextbox = new TextBox(Program.my_device, 695, 682, 100, Program.font15, 15, 12);
         TextBox loopspersecondtextbox = new TextBox(Program.my_device, 695, 712, 100, Program.font15, 15, 12);
         TextBox raycounttextbox = new TextBox(Program.my_device, 695, 742, 100, Program.font15, 15, 12);
         TextBox raylengthtextbox = new TextBox(Program.my_device, 695, 772, 100, Program.font15, 15, 12);
@@ -95,7 +100,7 @@ namespace AIbuilding
         TextBox ignorebesttextbox = new TextBox(Program.my_device, 695, 922, 100, Program.font15, 15, 12);
         TextBox ignoreworsttextbox = new TextBox(Program.my_device, 695, 952, 100, Program.font15, 15, 12);
         TextBox rangefinderserrortextbox = new TextBox(Program.my_device, 695, 982, 100, Program.font15, 15, 12);
-        KeySwitch keyd = new KeySwitch(Keys.D), keyc = new KeySwitch(Keys.C), keyg = new KeySwitch(Keys.G), keym = new KeySwitch(Keys.M);
+        KeySwitch keyd = new KeySwitch(Keys.D), keyc = new KeySwitch(Keys.C), keyg = new KeySwitch(Keys.G), keym = new KeySwitch(Keys.M), keyi = new KeySwitch(Keys.I);
         List<KeySwitch> switches;
         List<FormElement> elements;
         List<List<PointD>> route_buildings = new List<List<PointD>>();
@@ -109,6 +114,8 @@ namespace AIbuilding
         RealDrone real_drone = new RealDrone(), abstract_drone = new RealDrone();
         bool flight = false;
         DroneCharacteristics characteristics = new DroneCharacteristics();
+        double flight_length = 0;
+        DestructionAnimation dest_anim;
 
         public Session()
         {
@@ -135,6 +142,8 @@ namespace AIbuilding
             building_edge = MHeleper.CreateCircle(Program.my_device, 10, Color.Black);
             trackpoint = MHeleper.CreateCircle(Program.my_device, 12, Color.Yellow);
             trackpoint.DrawCircle(new Vector2(11.5f, 11.5f), 3.5, 4.5, Color.Red);
+            trackselectpoint = MHeleper.CreateCircle(Program.my_device, 12, Color.Yellow);
+            trackselectpoint.DrawCircle(new Vector2(11.5f, 11.5f), 3.5, 4.5, Color.Blue);
             map_mask = new Texture2D(Program.my_device, 1920, 1080);
             Color[] cd = new Color[1920 * 1080];
             for (int i = 0; i < 1920 * 1080; i++) cd[i] = Color.Black;
@@ -159,8 +168,9 @@ namespace AIbuilding
             loaddronebutton.Click += Loaddronebutton_Click;
             savedronebutton.Click += Savedronebutton_Click;
             keyd.state_changed += Keyd_state_changed;
-            elements = new List<FormElement>() { loopspersecondlabel, loopspersecondtextbox, ignorebesttextbox, ignoreworsttextbox, ignorebestlabel, rangefinderserrortextbox, rangefinderserrorlabel, ignorebestlabel, ignoreworstlabel, displayscalelabel, displayscaletextbox, raypowtextbox, raypowlabel, manual_dlabel, center_dlabel, rotmultlabel, rotmulttextbox, posmultlabel, posmulttextbox, raylengthlabel, raylengthtextbox, raycountlabel, raycounttextbox, rotdeslabel, rotdestextbox, rotefflabel, rotefftextbox, maxrolllabel, maxrolltextbox, acclabel, acctextbox, rollalabel, rollatextbox, maxspeedlabel, maxspeedtextbox, loaddronelabel, loaddronebutton, loaddronetextbox, savedronelabel, savedronebutton, savedronetextbox, savedronetextbox, dSlabel, dRlabel, debuglabel,  graphicslabel, dronespeedlabel, makeprogresslabel, loadprogresslabel, launchbutton, makeroutebutton, sessionbutton, loadroutebutton, saveroutebutton, sessionlabel, sessiontextbox, loadroutelabel, saveroutelabel, loadroutetextbox, saveroutetextbox, lengthroutelabel, positionroutelabel };
-            switches = new List<KeySwitch>() { keyd, keyc, keyg, keym };
+            elements = new List<FormElement>() { use_INSlabel, INSposdevtextbox, INSrotdevtextbox, INSposdevlabel, INSrotdevlabel, loopspersecondlabel, loopspersecondtextbox, ignorebesttextbox, ignoreworsttextbox, ignorebestlabel, rangefinderserrortextbox, rangefinderserrorlabel, ignorebestlabel, ignoreworstlabel, displayscalelabel, displayscaletextbox, raypowtextbox, raypowlabel, manual_dlabel, center_dlabel, rotmultlabel, rotmulttextbox, posmultlabel, posmulttextbox, raylengthlabel, raylengthtextbox, raycountlabel, raycounttextbox, rotdeslabel, rotdestextbox, rotefflabel, rotefftextbox, maxrolllabel, maxrolltextbox, acclabel, acctextbox, rollalabel, rollatextbox, maxspeedlabel, maxspeedtextbox, loaddronelabel, loaddronebutton, loaddronetextbox, savedronelabel, savedronebutton, savedronetextbox, savedronetextbox, dSlabel, dRlabel, debuglabel,  graphicslabel, dronespeedlabel, makeprogresslabel, loadprogresslabel, launchbutton, makeroutebutton, sessionbutton, loadroutebutton, saveroutebutton, sessionlabel, sessiontextbox, loadroutelabel, saveroutelabel, loadroutetextbox, saveroutetextbox, lengthroutelabel, positionroutelabel };
+            switches = new List<KeySwitch>() { keyd, keyc, keyg, keym, keyi };
+            dest_anim = new DestructionAnimation(new PointD(0, 0), map);
             SetCharacteristics();
         }
 
@@ -170,8 +180,8 @@ namespace AIbuilding
             acctextbox.text = (characteristics.acc * 60 * 60).ToString("0.####");
             maxrolltextbox.text = (characteristics.maxa / Math.PI * 180).ToString("0.####");
             rollatextbox.text = (characteristics.rolla * 60 * 60 / Math.PI * 180).ToString("0.####");
-            rotefftextbox.text = (characteristics.roteff * 60 / Math.PI * 180).ToString("0.####");
-            rotdestextbox.text = (characteristics.rotdes * 60 / Math.PI * 180).ToString("0.####");
+            rotefftextbox.text = (characteristics.roteff * 60).ToString("0.####");
+            rotdestextbox.text = (characteristics.rotdes * 60 * 60 / 180 * Math.PI).ToString("0.####");
             loopspersecondtextbox.text = characteristics.loops_per_second.ToString("0.####");
             raycounttextbox.text = characteristics.raycount.ToString("0.####");
             raylengthtextbox.text = characteristics.raylength.ToString("0.####");
@@ -182,12 +192,14 @@ namespace AIbuilding
             ignorebesttextbox.text = characteristics.ignorebest.ToString("0.####");
             ignoreworsttextbox.text = characteristics.ignoreworst.ToString("0.####");
             rangefinderserrortextbox.text = characteristics.rangefiders_error.ToString("0.####");
+            INSposdevtextbox.text = characteristics.INSposdev.ToString("0.####");
+            INSrotdevtextbox.text = characteristics.INSrotdev.ToString("0.####");
         }
 
         private bool AssignCharacteristics()
         {
             bool success = true;
-            DroneCharacteristics tcharacteristics = new DroneCharacteristics(rollatextbox, maxspeedtextbox, acctextbox, rotdestextbox, rotefftextbox, maxrolltextbox, raycounttextbox, raylengthtextbox, posmulttextbox, rotmulttextbox, raypowtextbox, displayscaletextbox, ignorebesttextbox, ignoreworsttextbox, rangefinderserrortextbox, loopspersecondtextbox, out success);
+            DroneCharacteristics tcharacteristics = new DroneCharacteristics(rollatextbox, maxspeedtextbox, acctextbox, rotdestextbox, rotefftextbox, maxrolltextbox, raycounttextbox, raylengthtextbox, posmulttextbox, rotmulttextbox, raypowtextbox, displayscaletextbox, ignorebesttextbox, ignoreworsttextbox, rangefinderserrortextbox, loopspersecondtextbox, INSposdevtextbox, INSrotdevtextbox, out success);
             if (success)
             {
                 characteristics = tcharacteristics;
@@ -228,10 +240,11 @@ namespace AIbuilding
         {
             if (session_loading || route_building_indexes.Count == 0 || trackpoints.Count == 0) return;
             flight = !flight;
-            real_drone = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
             if (flight)
             {
+                real_drone = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
                 abstract_drone = new RealDrone(building_representation, route_building_indexes, new BeizerCurve(trackpoints));
+                flight_length = new BeizerCurve(trackpoints).length;    
                 abstract_drone.abstract_INS = real_drone.INS;
                 if (!AssignCharacteristics()) return;
                 real_drone.characteristics = abstract_drone.characteristics = characteristics;
@@ -249,7 +262,7 @@ namespace AIbuilding
         private void CalculateTrack()
         {
             var curve = new BeizerCurve(trackpoints);
-            route_building_indexes = Drone.MakeBuilidng(curve, 50, 1000, route_buildings);
+            route_building_indexes = Drone.MakeBuilidng(curve, 50, real_drone.characteristics.raylength, route_buildings);
             points_on_track = Drone.GetTrack(curve, 50, -1);
             progress_b++;
             building_representation = Drone.GetBuildingRepresentations(route_buildings);
@@ -287,15 +300,6 @@ namespace AIbuilding
                 ms.WriteTo(file);
             }
         }
-
-        int lolres = 0;
-
-        void LOL(ref int a, string s)
-        {
-            a = Convert.ToInt32(s);
-        }
-
-        
 
         private void Loadroutebutton_Click(object sender, ClickEventArgs e)
         {
@@ -351,16 +355,17 @@ namespace AIbuilding
 
         private void Makeroutebutton_Click(object sender, ClickEventArgs e)
         {
+            if (!AssignCharacteristics()) return;
             if (trackpoints.Count < 3 || session_loading || flight) return;
             session_loading = true;
             Thread load_thread = new Thread(() =>
             {
                 progress_b = 0;
-                List<PointD> track_pos = Drone.GetTrack(new BeizerCurve(trackpoints), 600, -1);
+                List<PointD> track_pos = Drone.GetTrack(new BeizerCurve(trackpoints), characteristics.raylength / 2 + 100, -1);
                 string sts = "";
                 foreach (var item in track_pos)
                 {
-                    sts += "way(around:1100," + item.Y.ToString("0.######", CultureInfo.InvariantCulture) + "," + item.X.ToString("0.######", CultureInfo.InvariantCulture) + ")[building](if:number(t[\"building:levels\"])>=7);";
+                    sts += "way(around:"+((int)(characteristics.raylength+100)).ToString() + "," + item.Y.ToString("0.######", CultureInfo.InvariantCulture) + "," + item.X.ToString("0.######", CultureInfo.InvariantCulture) + ")[building](if:number(t[\"building:levels\"])>=7);";
                 }
                 string request_s = "https://overpass-api.de/api/interpreter?data=(" + sts + ");out geom;";
                 string contents = "";
@@ -433,6 +438,7 @@ namespace AIbuilding
                 if (!keym.state) real_drone.target_a = abstract_drone.target_a;
                 abstract_drone.debug_abstract_fcalc = false;
             }
+            positionroutelabel.text = "Current position : " + real_drone.curlength.ToString()+"m";
             map.Run(mouse, keyboard);
             if (MHeleper.ApplicationIsActivated())
             {
@@ -446,7 +452,9 @@ namespace AIbuilding
                 graphicslabel.visible = keyd.state;
                 center_dlabel.visible = keyd.state;
                 manual_dlabel.visible = keyd.state;
+                use_INSlabel.visible = keyd.state;
                 Program.save_graphics = keyg.state;
+                Program.only_INS = keyi.state;
                 if (!session_loading)
                 {
                     if (keyboard.IsKeyDown(Keys.OemPlus))
@@ -458,7 +466,6 @@ namespace AIbuilding
                         real_drone.index_pos = Math.Max(real_drone.index_pos - 1, 0);
                     }
                 }
-                positionroutelabel.text = "Current position : " + real_drone.curlength.ToString();
                 if (mouse.Position.ToVector2().InRect(MapMath.start_screen, MapMath.end_screen))
                 {
                     if (mouse.RightButton == ButtonState.Pressed)
@@ -497,6 +504,7 @@ namespace AIbuilding
                     track_changed = false;
                 }
                 foreach (var item in elements) item.Check(mouse, keyboard);
+                dest_anim.Run();
             }
             if (!session_loading && route_building_indexes.Count > 0)
             {
@@ -505,6 +513,12 @@ namespace AIbuilding
                 {
                     if (keym.state) real_drone.DirectCommand(keyboard);
                     real_drone.CalculateMovement(1);
+                    if (real_drone.hit_target)
+                    {
+                        dest_anim.position = real_drone.position;
+                        dest_anim.Start();
+                        Launchbutton_Click(null, null);
+                    }
                     abstract_drone.abstract_RangeFinders = real_drone.GetRangeFindersDebug(real_drone.index_pos, real_drone.position, real_drone.rotation);
                     if (keyc.state) map.center = MapMath.ScreenToCoordinates(MapMath.LongLatToScreen(real_drone.position, map.center, map.level), map.center, map.level).ToVector2();
                 }
@@ -520,6 +534,7 @@ namespace AIbuilding
             graphicslabel.text = "Save graphics [G]: " + keyg.state;
             center_dlabel.text = "Center drone [C]: " + keyc.state;
             manual_dlabel.text = "Manual control [M]: " + keym.state;
+            use_INSlabel.text = "Use only INS [I]: " + keyi.state;                       
             if (progress_b != 3) makeprogresslabel.text = loadprogresslabel.text = progress_b.ToString() + "/3";
             else makeprogresslabel.text = loadprogresslabel.text = "";
             if (!session_loading)
@@ -575,7 +590,7 @@ namespace AIbuilding
                                 if (MapMath.LineInScreen(stpos, fnpos)) GraphicsPrimitives.DrawLine(Program.spriteBatch, stpos, fnpos, Color.Red, MathF.Pow(1.2f, map.level - 12 + 1));
                             }
                         }
-                        Program.spriteBatch.Draw(trackpoint, MapMath.LongLatToScreen(points_on_track[real_drone.index_pos], map.center, map.level), null, Microsoft.Xna.Framework.Color.White, 0f, new Vector2(11.5f, 11.5f), MathF.Pow(1.1f, map.level - 15), SpriteEffects.None, 1);
+                        Program.spriteBatch.Draw(trackselectpoint, MapMath.LongLatToScreen(points_on_track[real_drone.index_pos], map.center, map.level), null, Microsoft.Xna.Framework.Color.White, 0f, new Vector2(11.5f, 11.5f), MathF.Pow(1.1f, map.level - 15), SpriteEffects.None, 1);
                         foreach (var item in real_drone.debug_bbounds)
                         {
                             Program.spriteBatch.Draw(building_edge, MapMath.LongLatToScreen(item, map.center, map.level), null, Microsoft.Xna.Framework.Color.White, 0f, new Vector2(10f, 10f), 0.5f * MathF.Pow(1.5f, map.level - 14), SpriteEffects.None, 1);
@@ -593,6 +608,7 @@ namespace AIbuilding
             }
             Program.spriteBatch.Draw(map_mask, new Vector2(0, 0), Color.White);
             foreach (var item in elements) item.Draw(Program.spriteBatch);
+            dest_anim.Draw();
             if (flight)
             {
                 dronespeedlabel.text = "Drone speed:" + (real_drone.speed * 60 * 3.6).ToString("#.#") + "km/h";

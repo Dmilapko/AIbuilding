@@ -1,4 +1,4 @@
-﻿using AIlanding;
+﻿using AIbuilding;
 using FormElementsLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Input;
 using MonogameLabel;
 using MonoHelper;
 using System.Collections.Generic;
+using System.IO;
 using System.Timers;
 using System.Xml.Linq;
 
@@ -19,6 +20,7 @@ namespace AIbuilding
         int fpscnt = 0;
         List<FormElement> elements = new List<FormElement>();
         public Label fpslabel, pauselabel;
+        KeySwitch keyf1 = new KeySwitch(Keys.F1);
 
         bool paused = false, press_p = false;
 
@@ -54,6 +56,10 @@ namespace AIbuilding
             Program.font20 = Content.Load<SpriteFont>(@"font20");
             Program.font10 = Content.Load<SpriteFont>(@"font10");
             Program.font15 = Content.Load<SpriteFont>(@"font15");
+            for (int i = 1; i <= 7; i++)
+            {
+                Program.explosion_a.Add(Texture2D.FromStream(Program.my_device, new FileStream("MyContent\\explosion_a" + i.ToString() + ".png", FileMode.Open)));
+            }
             fpslabel = new Label(1820, 20, -1, -1, "FPS", Program.font20, 20, 20);
             fpslabel.textcolor = Color.Red;
             elements.Add(fpslabel);
@@ -72,12 +78,9 @@ namespace AIbuilding
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-            if (Keyboard.GetState().IsKeyDown(Keys.P))
-            {
-                if (!press_p) paused = !paused;
-                press_p = true;
-            }
-            else press_p = false;
+            keyf1.Run(Keyboard.GetState());
+            paused = keyf1.state;
+
             if (!paused) session.Run(Mouse.GetState(), Keyboard.GetState());
             // TODO: Add your update logic here
 
@@ -88,8 +91,8 @@ namespace AIbuilding
 
         protected override void Draw(GameTime gameTime)
         {
-            if (paused) pauselabel.text = "PAUSE";
-            else pauselabel.text = "RUNNING";
+            if (paused) pauselabel.text = "PAUSE [F1]";
+            else pauselabel.text = "RUNNING [F1]";
             GraphicsDevice.Clear(Color.CornflowerBlue);
             spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied);
             session.Draw();

@@ -1,4 +1,4 @@
-﻿using AIlanding;
+﻿using AIbuilding;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -114,29 +114,6 @@ namespace AIbuilding
             return brng;
         }
 
-     /*   public static PointD TurnLongLat(PointD coord, PointD midpoint, double angle)
-        {
-            // Create local variables using appropriate nomenclature
-            double x = coord.X;
-            double y = coord.Y;
-            double mx = midpoint.X;
-            double my = midpoint.Y;
-
-            // Offset input point by the midpoint so the midpoint becomes the origin
-            double ox = x - mx;
-            double oy = y - my;
-
-            // Cache trig results because trig is expensive
-            double cosr = Math.Cos(angle);
-            double sinr = Math.Sin(angle);
-
-            // Perform rotation
-            double dx = ox * cosr - oy * sinr;
-            double dy = ox * sinr + oy * cosr;
-
-            // Undo the offset
-            return new PointD(dx + mx, dy + my);
-        }*/
 
         public static bool LineInScreen(Vector2 p0, Vector2 p1)
         {
@@ -180,8 +157,8 @@ namespace AIbuilding
         {
             // Convert input miles to degrees latitude and longitude.
             // 110574+55.7*12.5
-            var radiusLon = radiusm / (111290 * Math.Cos(center.Y * (Math.PI / 180)));
-            var radiusLat = radiusm / 111290;
+            var radiusLon = radiusm / (111291.1 * Math.Cos(center.Y * (Math.PI / 180)));
+            var radiusLat = radiusm / 111290.8;
 
 
             return new PointD(center.X + radiusLon * Math.Sin(theta), center.Y + radiusLat * Math.Cos(theta)); 

@@ -1,4 +1,4 @@
-﻿using AIlanding;
+﻿using AIbuilding;
 using Microsoft.VisualBasic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -21,10 +21,7 @@ namespace AIbuilding
         {
         }
 
-       /* public static string TileFile(Microsoft.Xna.Framework.Point pos, int level)
-        {
-            return "tile_" + level.ToString() + "_" + pos.X.ToString() + "_" + pos.Y.ToString() + ".png";
-        }*/
+
         public override string TileFile()
         {
             return "buildingmask_" + level.ToString() + "_" + pos.X.ToString() + "_" + pos.Y.ToString() + ".png";
@@ -37,71 +34,6 @@ namespace AIbuilding
             var rightv = MapMath.PointToLongLat(pos + new Point(1, 1), level);
             return "https://overpass-api.de/api/interpreter?data=[out:csv(::lat,::lon;false;\";\")];way[\"building\"](if:number(t[\"building:levels\"])%3E=7)(" + (rightv.Y).ToString(CultureInfo.InvariantCulture) + "," + leftv.X.ToString(CultureInfo.InvariantCulture) + "," + (leftv.Y).ToString(CultureInfo.InvariantCulture) + "," + rightv.X.ToString(CultureInfo.InvariantCulture) + ");%20out%20center;";
         }
-
-        /*internal override Texture2D GetTileTexture(string folder)
-        {
-            string cur_tile = folder + "\\" + tilefile;
-            bool blank = false;
-            List<Vector2> tiledata;
-            try
-            {
-                if (System.IO.File.Exists(cur_tile))
-                {
-                    using (BinaryReader binreader = new BinaryReader(new FileStream(cur_tile, FileMode.Open, FileAccess.Read)))
-                    {
-                        int buildings_count = binreader.ReadInt32();
-                        tiledata = new List<Vector2>(buildings_count);
-                        for (int i = 0; i < buildings_count; i++) tiledata.Add(new Vector2(binreader.ReadSingle()));
-                    }
-                }
-                else
-                {
-                    blank = true;
-                    throw new Exception();
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!blank)
-                    Thread.Sleep(500);
-                try
-                {
-                    string contents;
-                    using (WebClient client = new WebClient())
-                    {
-                     
-                        client.Headers.Add("User-Agent: Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)");
-                        contents = client.DownloadString(tileurl);
-                    }
-                    tiledata = new List<Vector2>();
-                    for (int i = 0; i < contents.Length / 22; i++)
-                    {
-                        tiledata.Add(new Vector2(Convert.ToSingle(contents.Substring(i, 10)), Convert.ToSingle(contents.Substring(i + 11, 10))));
-                    }
-                    using (FileStream file = new FileStream(cur_tile, FileMode.Create, System.IO.FileAccess.Write))
-                    {
-                        MemoryStream ms = new MemoryStream();
-                        using (BinaryWriter binwriter = new BinaryWriter(ms, Encoding.Default, true))
-                        {
-                            binwriter.Write(tiledata.Count);
-                            for (int i = 0; i < tiledata.Count; i++)
-                            {
-                                binwriter.Write(tiledata[i].X);
-                                binwriter.Write(tiledata[i].Y);
-                            }
-                        }
-                        ms.WriteTo(file);
-                    }
-                }
-                catch (Exception ex2)
-                {
-                    return null;
-                }
-            }
-            Texture2D res = new Texture2D(Program.my_device, 256, 256);
-            Color[] cd = new Color[256 * 256];
-            return res;
-        }*/
 
         internal override Texture2D GetTileTexture(string folder)
         {

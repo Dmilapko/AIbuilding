@@ -11,7 +11,7 @@ using MonoHelper;
 using MathNet.Numerics;
 
 
-namespace AIlanding
+namespace AIbuilding
 {
     public static class Program
     {
@@ -27,6 +27,8 @@ namespace AIlanding
         static public Dictionary<string, string> setupProp = new Dictionary<string, string>();
         public static string setuppath = "setup";
         public static bool save_graphics = false;
+        public static bool only_INS = false;
+        public static List<Texture2D> explosion_a = new List<Texture2D>();
 
         static public void ChangeSetup()
         {

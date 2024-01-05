@@ -21,7 +21,7 @@ namespace AIbuilding
         List<BuildingRepresentation> buildings = new List<BuildingRepresentation>();
         //List<Pair<PointD, List<int>>> route_building_indexes = new List<Pair<PointD, List<int>>>();
         List<List<int>> route_building_indexes = new List<List<int>>();
-        public DroneINS INS = new DroneINS(12, 1000);
+        public DroneINS INS;
         BeizerCurve track;
         public bool alive = true;
         public PointD position = new PointD(0,0);
@@ -33,9 +33,21 @@ namespace AIbuilding
         public double speed = 0;
         public double target_a = 0;
         public DroneCharacteristics characteristics = new DroneCharacteristics();
+        public bool hit_target = false;
+
+        public DroneINS abstract_INS;
+        public List<double> abstract_RangeFinders = new List<double>();
+        public bool debug_abstract_scalc = false;
+        public bool debug_abstract_fcalc = false;
+        public List<PointD> debug_abstract_posdev = new List<PointD>();
+        public double cur_pos_deviation = 0;
+        public PointD posch = new PointD(0, 0);
+        public double wanted_angle = 0;
 
         public RealDrone(List<BuildingRepresentation> buildings, List<List<int>> route_building_indexes, BeizerCurve track) 
         {
+            INS = new DroneINS(1000, characteristics.INSposdev, characteristics.INSrotdev);
+            abstract_INS = new DroneINS(1000, characteristics.INSposdev, characteristics.INSrotdev);
             this.buildings = buildings;
             this.track = track;
             this.route_building_indexes = route_building_indexes;
@@ -60,6 +72,7 @@ namespace AIbuilding
                 double cur_d = MapMath.DistanceLongLat(position, next_points[i + 1]);
                 if (cur_d < mind) { cur_lt = i; mind = cur_d; }
             }
+            if (next_points.Count == 2) hit_target = true;
             curlength += cur_lt;
             index_pos = (int)(curlength / 50);
         }
@@ -111,15 +124,6 @@ namespace AIbuilding
                 target_a += 0.02;
             }
         }
-
-        public DroneINS abstract_INS = new DroneINS(12, 1000);
-        public List<double> abstract_RangeFinders = new List<double>();
-        public bool debug_abstract_scalc = false;
-        public bool debug_abstract_fcalc = false;
-        public List<PointD> debug_abstract_posdev = new List<PointD>();
-        public double cur_pos_deviation = 0;
-        public PointD posch = new PointD(0, 0);
-        public double wanted_angle = 0;
 
 
         public void CalculateMovementAbstract(DateTime start_time)
@@ -192,7 +196,8 @@ namespace AIbuilding
                     posch = (cur_pos_deviation * cur_oper_list[c].First).Turn(rotation);
                 }
             }
-            position = min_pos; rotation = min_rot;
+            if (!Program.only_INS) position = min_pos; rotation = min_rot;
+            rotation.Normalize(2 * Math.PI);
             abstract_INS.Reset(new PointD(0, MapMath.DistanceLongLat(prev_pos, position)).Turn(MapMath.AngleLongLat(prev_pos, position)), MHeleper.AngleDif(rotation, prev_rot));
             PointD target_poss = MapMath.RotateLongtLat(position, abstract_INS.sum_v.Length() * 60 * 0.5, abstract_INS.sum_v.Angle());
             PointD target_posf = Drone.GetTrack(track, 1, 2, curlength + abstract_INS.sum_v.Length() * 60 * 3)[0];
@@ -280,6 +285,10 @@ namespace AIbuilding
                         }
                     }
                 }
+            }
+            for (int i = 0; i < res.Count; i++)
+            {
+                res[i] += characteristics.rangefiders_error * MHeleper.RandomDouble();
             }
             return res;
         }

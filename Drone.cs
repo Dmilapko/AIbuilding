@@ -12,7 +12,7 @@ using System.Drawing;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework.Input;
 using System.ComponentModel.DataAnnotations.Schema;
-using AIlanding;
+using AIbuilding;
 using MonogameTextBoxLib;
 using System.IO;
 
@@ -36,6 +36,8 @@ namespace AIbuilding
         public int ignoreworst = 0;
         public double rangefiders_error = 0;
         public double loops_per_second = 5;
+        public double INSrotdev = 0;
+        public double INSposdev = 0;
 
         public DroneCharacteristics(double rolla, double maxs, double acc, double rotdes, double roteff, double maxa, int raycount, double raylength, double pos_mult, double rot_mult, double raypow, double displayscale, int ignorebest, int ignoreworst, double rangefiders_error, int loops_per_second)
         {
@@ -57,14 +59,14 @@ namespace AIbuilding
             this.loops_per_second = loops_per_second;
         }
 
-        public DroneCharacteristics(TextBox rolla, TextBox maxs, TextBox acc, TextBox rotdes, TextBox roteff, TextBox maxa, TextBox raycount, TextBox raylength, TextBox pos_mult, TextBox rot_mult, TextBox raypow, TextBox displayscale, TextBox ignorebest, TextBox ignoreworst, TextBox rangefiders_error, TextBox loops_per_second, out bool success)
+        public DroneCharacteristics(TextBox rolla, TextBox maxs, TextBox acc, TextBox rotdes, TextBox roteff, TextBox maxa, TextBox raycount, TextBox raylength, TextBox pos_mult, TextBox rot_mult, TextBox raypow, TextBox displayscale, TextBox ignorebest, TextBox ignoreworst, TextBox rangefiders_error, TextBox loops_per_second, TextBox posdev, TextBox rotdev, out bool success)
         {
             success = true;
             success &= rolla.MakeAction(new Action(() => { this.rolla = Convert.ToDouble(rolla.text) / 60 / 60 * Math.PI / 180; }), null);
             success &= maxs.MakeAction(new Action(() => { this.maxs = Convert.ToDouble(maxs.text) / 60 / 3.6; }), null);
             success &= acc.MakeAction(new Action(() => { this.acc = Convert.ToDouble(acc.text) / 60 / 60; }), null);
-            success &= rotdes.MakeAction(new Action(() => { this.rotdes = Convert.ToDouble(rotdes.text) / 60 * Math.PI / 180; }), null);
-            success &= roteff.MakeAction(new Action(() => { this.roteff = Convert.ToDouble(roteff.text) / 60 * Math.PI / 180; }), null);
+            success &= rotdes.MakeAction(new Action(() => { this.rotdes = Convert.ToDouble(rotdes.text) / 60 / 60 * 180 / Math.PI; }), null);
+            success &= roteff.MakeAction(new Action(() => { this.roteff = Convert.ToDouble(roteff.text) / 60; }), null);
             success &= maxa.MakeAction(new Action(() => { this.maxa = Convert.ToDouble(maxa.text) * Math.PI / 180; }), null);
             success &= raycount.MakeAction(new Action(() => { this.raycount = Convert.ToInt32(raycount.text); }), null);
             success &= raylength.MakeAction(new Action(() => { this.raylength = Convert.ToDouble(raylength.text); }), null);
@@ -76,7 +78,11 @@ namespace AIbuilding
             success &= ignoreworst.MakeAction(new Action(() => { this.ignoreworst = Convert.ToInt32(ignoreworst.text); }), null);
             success &= rangefiders_error.MakeAction(new Action(() => { this.rangefiders_error = Convert.ToDouble(rangefiders_error.text); }), null);
             success &= loops_per_second.MakeAction(new Action(() => { this.loops_per_second = Convert.ToDouble(loops_per_second.text); }), null);
+            success &= loops_per_second.MakeAction(new Action(() => { this.INSposdev = Convert.ToDouble(posdev.text); }), null);
+            success &= loops_per_second.MakeAction(new Action(() => { this.INSrotdev = Convert.ToDouble(rotdev.text); }), null);
+
         }
+
 
         public static DroneCharacteristics FromFile(string filename)
         {
@@ -100,6 +106,8 @@ namespace AIbuilding
                 res.ignoreworst = binreader.ReadInt32();
                 res.rangefiders_error = binreader.ReadDouble();
                 res.loops_per_second = binreader.ReadDouble();
+                res.INSposdev = binreader.ReadDouble();
+                res.INSrotdev = binreader.ReadDouble();
             }
             return res;
         }
@@ -127,6 +135,7 @@ namespace AIbuilding
                     binwriter.Write(ignoreworst);
                     binwriter.Write(rangefiders_error);
                     binwriter.Write(loops_per_second);
+                    binwriter.Write(INSposdev); binwriter.Write(INSrotdev);
                 }
                 ms.WriteTo(file);
             }
