@@ -309,7 +309,6 @@ namespace AIbuilding
             Thread loadroute_thread = new Thread(() =>
             {
                 session_loading = true;
-                track_changed = true;
                 loadroutetextbox.changecolor_actionfinally = () =>
                 {
                     session_loading = false;
@@ -337,6 +336,7 @@ namespace AIbuilding
                             }
                         }
                     }
+                    track_changed = true;
                     progress_b++;
                     CalculateTrack();
                     session_loading = false;
@@ -365,7 +365,7 @@ namespace AIbuilding
                 string sts = "";
                 foreach (var item in track_pos)
                 {
-                    sts += "way(around:"+((int)(characteristics.raylength+100)).ToString() + "," + item.Y.ToString("0.######", CultureInfo.InvariantCulture) + "," + item.X.ToString("0.######", CultureInfo.InvariantCulture) + ")[building](if:number(t[\"building:levels\"])>=7);";
+                    sts += "way(around:"+((int)(characteristics.raylength+100)).ToString() + "," + item.Y.ToString("0.####", CultureInfo.InvariantCulture) + "," + item.X.ToString("0.####", CultureInfo.InvariantCulture) + ")(if:t[\"building:levels\"]>6);";
                 }
                 string request_s = "https://overpass-api.de/api/interpreter?data=(" + sts + ");out geom;";
                 string contents = "";
@@ -415,29 +415,6 @@ namespace AIbuilding
         PointD scalc_p; double scalc_rot;
         public void Run(MouseState mouse, KeyboardState keyboard)
         {
-            if (abstract_drone.debug_abstract_scalc)
-            {
-                scalc_p = real_drone.position;
-                scalc_rot = real_drone.rotation;
-                abstract_drone.debug_abstract_scalc = false;
-            }
-            if (abstract_drone.debug_abstract_fcalc)
-            {
-                dSlabel.text = "Position deviation: " + MapMath.DistanceLongLat(abstract_drone.position, scalc_p).Round(3);
-                dRlabel.text = "Rotation deviation: " + MHeleper.AngleDif(abstract_drone.rotation, scalc_rot).ToDegrees().Round(2);
-                Color[] cd = new Color[200 * 200];
-                posdeviation_cd.CopyTo(cd, 0);
-                foreach (var pos in abstract_drone.debug_abstract_posdev)
-                {
-                    SetColor(ref cd, pos, Color.Blue);
-                }
-                PointD meter_pos = new PointD(0, MapMath.DistanceLongLat(abstract_drone.position, scalc_p)).Turn(MapMath.AngleLongLat(abstract_drone.position, scalc_p));
-                SetColor(ref cd, abstract_drone.posch, Color.Red);
-                SetColor(ref cd, meter_pos, Color.Yellow);
-                posdeviation_rect.SetData(cd);
-                if (!keym.state) real_drone.target_a = abstract_drone.target_a;
-                abstract_drone.debug_abstract_fcalc = false;
-            }
             positionroutelabel.text = "Current position : " + real_drone.curlength.ToString()+"m";
             map.Run(mouse, keyboard);
             if (MHeleper.ApplicationIsActivated())
@@ -511,6 +488,30 @@ namespace AIbuilding
                 if (!flight) real_drone.GetRangeFindersDebug(real_drone.index_pos, points_on_track[real_drone.index_pos], real_drone.rotation);
                 else
                 {
+                    if (abstract_drone.debug_abstract_scalc)
+                    {
+                        scalc_p = real_drone.position;
+                        scalc_rot = real_drone.rotation;
+                        abstract_drone.debug_abstract_scalc = false;
+                    }
+                    if (abstract_drone.debug_abstract_fcalc)
+                    {
+                        dSlabel.text = "Position deviation: " + MapMath.DistanceLongLat(abstract_drone.position, scalc_p).Round(3);
+                        dRlabel.text = "Rotation deviation: " + MHeleper.AngleDif(abstract_drone.rotation, scalc_rot).ToDegrees().Round(2);
+                        Color[] cd = new Color[200 * 200];
+                        posdeviation_cd.CopyTo(cd, 0);
+                        foreach (var pos in abstract_drone.debug_abstract_posdev)
+                        {
+                            SetColor(ref cd, pos, Color.Blue);
+                        }
+                        PointD meter_pos = new PointD(0, MapMath.DistanceLongLat(abstract_drone.position, scalc_p)).Turn(MapMath.AngleLongLat(abstract_drone.position, scalc_p));
+                        SetColor(ref cd, abstract_drone.posch, Color.Red);
+                        SetColor(ref cd, meter_pos, Color.Yellow);
+                        posdeviation_rect.SetData(cd);
+                        if (!keym.state) real_drone.target_a = abstract_drone.target_a;
+                        abstract_drone.debug_abstract_fcalc = false;
+                    }
+                    abstract_drone.alowed_cycle = false;
                     if (keym.state) real_drone.DirectCommand(keyboard);
                     real_drone.CalculateMovement(1);
                     if (real_drone.hit_target)
@@ -518,8 +519,20 @@ namespace AIbuilding
                         dest_anim.position = real_drone.position;
                         dest_anim.Start();
                         Launchbutton_Click(null, null);
+                        return;
                     }
                     abstract_drone.abstract_RangeFinders = real_drone.GetRangeFindersDebug(real_drone.index_pos, real_drone.position, real_drone.rotation);
+                    foreach (double item in abstract_drone.abstract_RangeFinders)
+                    {
+                        if (item < 3)
+                        {
+                            dest_anim.position = real_drone.position;
+                            dest_anim.Start();
+                            Launchbutton_Click(null, null);
+                            break;
+                        }
+                    }
+                    abstract_drone.alowed_cycle = true;
                     if (keyc.state) map.center = MapMath.ScreenToCoordinates(MapMath.LongLatToScreen(real_drone.position, map.center, map.level), map.center, map.level).ToVector2();
                 }
             }    
@@ -557,7 +570,7 @@ namespace AIbuilding
             }
             if (!session_loading && map.level > 10)
             {
-                if (!keyg.state) foreach (var building in route_buildings)
+                 if (!keyg.state) foreach (var building in route_buildings)
                 {
                     for (int i = 0; i < building.Count; i++)
                     {

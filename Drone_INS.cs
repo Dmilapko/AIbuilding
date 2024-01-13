@@ -218,13 +218,17 @@ namespace MonoHelper
 
         public void Reset(PointD real_res_pos, double real_res_rot)
         {
-            PointD mgp = real_res_pos / res_pos - new PointD(1, 1);
-            sum_v *= new PointD(1,1) + mgp;
-            if (res_rot != 0)
+            //PointD mgp = real_res_pos / res_pos - new PointD(1, 1);
+            //sum_v *= new PointD(1,1) + mgp;
+            //sum_v.Turn(real_res_pos.Angle() - res_pos.Angle());
+            //sum_v *= real_res_pos.Length() / res_pos.Length(); 
+            sum_v += (real_res_pos - res_pos) / (double)res_t;
+            /*if (res_rot != 0)
             {
                 double mgr = real_res_rot / res_rot - 1;
                 if (mgr < 1.25) sum_rot *= 1 + mgr;
-            }
+            }*/
+            sum_rot += (real_res_rot - res_rot) / (double)res_t;
             res_pos = new PointD(0, 0);
             res_rot = 0;
             res_t = 0;

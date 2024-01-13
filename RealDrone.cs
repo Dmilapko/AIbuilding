@@ -43,6 +43,7 @@ namespace AIbuilding
         public double cur_pos_deviation = 0;
         public PointD posch = new PointD(0, 0);
         public double wanted_angle = 0;
+        public bool alowed_cycle = true;
 
         public RealDrone(List<BuildingRepresentation> buildings, List<List<int>> route_building_indexes, BeizerCurve track) 
         {
@@ -129,6 +130,10 @@ namespace AIbuilding
         public void CalculateMovementAbstract(DateTime start_time)
         {
             if (abstract_INS.locked_data.Count == 0 || abstract_RangeFinders.Count == 0) return;
+            while (!alowed_cycle)
+            {
+                Thread.Sleep(1);
+            }
             debug_abstract_scalc = true;
             abstract_INS.ProcessData();
 
@@ -179,7 +184,8 @@ namespace AIbuilding
                 List<double> diflist = new List<double>();
                 for (int i = 0; i < res_scan.Count; i++)
                 {
-                    diflist.Add(Math.Abs(res_scan[i] - current_abstract_RangeFinders[i]));
+                    if (current_abstract_RangeFinders[i] < 9000) diflist.Add(Math.Abs(res_scan[i] - current_abstract_RangeFinders[i]));
+                    else if (res_scan[i] < 9000) diflist.Add(10000);
                 }
                 diflist.OrderByDescending(c => c).ToArray();
                 for (int i = 0; i < diflist.Count; i++)

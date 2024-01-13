@@ -38,6 +38,7 @@ namespace AIbuilding
             graphics.PreferredBackBufferWidth = 1920;
             graphics.PreferredBackBufferHeight = 1080;
             Window.Position = new Point(0, 0);
+            //graphics.ToggleFullScreen();
             graphics.ApplyChanges();
             spriteBatch = new SpriteBatch(GraphicsDevice);
             Program.my_device = GraphicsDevice;
